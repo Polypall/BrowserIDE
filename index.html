@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browser Game IDE</title>
+<link rel="stylesheet" href="style.css">
+
+<!-- Monaco Editor AMD Loader -->
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+<!-- JSZip for export -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<!-- App modules (order matters) -->
+<script src="starter-game.js"></script>
+<script src="editor.js"></script>
+<script src="game-runner.js"></script>
+<script src="sprite-editor.js"></script>
+<script src="asset-manager.js"></script>
+<script src="ai-assistant.js"></script>
+<script src="project-manager.js"></script>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============================================================
+       TOOLBAR
+       ============================================================ -->
+  <div id="toolbar">
+    <span class="toolbar-brand">🎮 GameIDE</span>
+
+    <input type="text" id="project-name-input" value="My Game" placeholder="Project name" title="Project name">
+
+    <div class="toolbar-sep"></div>
+
+    <button class="toolbar-btn" id="btn-new" title="New project (clears current)">📄 New</button>
+    <button class="toolbar-btn" id="btn-save" title="Save project (Ctrl+S)">💾 Save</button>
+    <button class="toolbar-btn" id="btn-load" title="Load saved project">📂 Load</button>
+
+    <div class="toolbar-sep"></div>
+
+    <button class="toolbar-btn run" id="btn-run" title="Run game (F5 or Ctrl+Enter)">▶ Run</button>
+    <button class="toolbar-btn stop hidden" id="btn-stop" title="Stop game">⏹ Stop</button>
+
+    <div class="toolbar-sep"></div>
+
+    <button class="toolbar-btn accent" id="btn-export" title="Export project (Ctrl+Shift+E)">📦 Export HTML</button>
+    <button class="toolbar-btn" id="btn-export-zip" title="Export as ZIP">🗜 ZIP</button>
+  </div>
+
+  <!-- ============================================================
+       MAIN AREA
+       ============================================================ -->
+  <div id="main-area">
+
+    <!-- LEFT SIDEBAR -->
+    <div id="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-section-header">
+          <span><span class="icon">📁</span>Files</span>
+        </div>
+        <div class="sidebar-section-body">
+          <div id="file-tree"></div>
+        </div>
+      </div>
+
+      <div class="sidebar-section" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+        <div class="sidebar-section-header">
+          <span><span class="icon">⌨</span>Shortcuts</span>
+        </div>
+        <div class="sidebar-section-body" style="padding:8px;flex:1;">
+          <div style="font-size:11px;color:#858585;line-height:1.8;">
+            <div><kbd style="background:#333;padding:1px 5px;border-radius:3px;font-size:10px;">F5</kbd> Run / Stop</div>
+            <div><kbd style="background:#333;padding:1px 5px;border-radius:3px;font-size:10px;">Ctrl+S</kbd> Save</div>
+            <div><kbd style="background:#333;padding:1px 5px;border-radius:3px;font-size:10px;">Ctrl+⏎</kbd> Run</div>
+            <div><kbd style="background:#333;padding:1px 5px;border-radius:3px;font-size:10px;">Ctrl+⇧+E</kbd> Export</div>
+          </div>
+
+          <div style="margin-top:16px;">
+            <div style="font-size:11px;color:#858585;font-weight:bold;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Quick Templates</div>
+            <button class="btn-small" id="tpl-platformer" style="width:100%;margin-bottom:4px;text-align:left;" title="Load starter platformer game">🏃 Platformer</button>
+            <button class="btn-small" id="tpl-shooter" style="width:100%;margin-bottom:4px;text-align:left;" title="Load top-down shooter template">🔫 Shooter</button>
+            <button class="btn-small" id="tpl-puzzle" style="width:100%;text-align:left;" title="Load simple puzzle game template">🧩 Puzzle</button>
+          </div>
+
+          <div style="margin-top:16px;">
+            <div style="font-size:11px;color:#858585;font-weight:bold;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Phaser Snippets</div>
+            <button class="btn-small" id="snip-player" style="width:100%;margin-bottom:4px;text-align:left;">👤 Add Player</button>
+            <button class="btn-small" id="snip-platform" style="width:100%;margin-bottom:4px;text-align:left;">🏗 Add Platform</button>
+            <button class="btn-small" id="snip-text" style="width:100%;text-align:left;">📝 Add Text</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DRAG HANDLE: LEFT -->
+    <div class="drag-handle vertical" id="drag-left" title="Drag to resize"></div>
+
+    <!-- CENTER: EDITOR -->
+    <div id="editor-area">
+      <div id="editor-tabs">
+        <div class="editor-tab active">📄 game.js</div>
+      </div>
+      <div id="monaco-container"></div>
+    </div>
+
+    <!-- DRAG HANDLE: RIGHT -->
+    <div class="drag-handle vertical" id="drag-right" title="Drag to resize"></div>
+
+    <!-- RIGHT PANEL -->
+    <div id="right-panel">
+      <div id="right-tabs">
+        <div class="right-tab active" data-tab="preview">▶ Preview</div>
+        <div class="right-tab" data-tab="sprite">🎨 Sprite</div>
+        <div class="right-tab" data-tab="assets">📦 Assets</div>
+        <div class="right-tab" data-tab="ai">🤖 AI</div>
+      </div>
+
+      <!-- GAME PREVIEW TAB -->
+      <div class="right-panel-content active" data-panel="preview" id="game-preview-panel">
+        <div id="game-iframe-wrapper">
+          <div id="game-placeholder">
+            <div class="placeholder-icon">🎮</div>
+            <p>Click <strong>▶ Run</strong> to start your game</p>
+            <p style="margin-top:8px;font-size:12px;">Powered by <a href="https://phaser.io" target="_blank" style="color:#007acc;">Phaser 3</a></p>
+          </div>
+          <iframe
+            id="game-iframe"
+            class="hidden"
+            sandbox="allow-scripts allow-same-origin"
+            allow="autoplay"
+            title="Game Preview"
+          ></iframe>
+        </div>
+      </div>
+
+      <!-- SPRITE EDITOR TAB -->
+      <div class="right-panel-content" data-panel="sprite" id="sprite-editor-panel">
+        <div class="sprite-toolbar">
+          <button class="sprite-tool-btn active" id="tool-pencil" data-tool="pencil" title="Draw (pencil)">✏ Draw</button>
+          <button class="sprite-tool-btn" id="tool-eraser" data-tool="eraser" title="Eraser">⌫ Erase</button>
+          <button class="sprite-tool-btn" id="tool-fill" data-tool="fill" title="Fill bucket">🪣 Fill</button>
+          <div style="width:1px;height:20px;background:var(--border);margin:0 4px;"></div>
+          <button class="sprite-tool-btn" id="tool-grid" title="Toggle grid">⊞ Grid</button>
+          <button class="sprite-tool-btn" id="tool-iso" title="Isometric preview">◆ Iso</button>
+          <div style="width:1px;height:20px;background:var(--border);margin:0 4px;"></div>
+          <button class="sprite-tool-btn" id="tool-clear" title="Clear canvas">🗑 Clear</button>
+          <button class="sprite-tool-btn accent" id="tool-export-png" title="Export as PNG">↓ PNG</button>
+          <button class="sprite-tool-btn accent" id="tool-add-asset" title="Add to asset manager">+ Asset</button>
+        </div>
+
+        <div class="sprite-canvas-area">
+          <div>
+            <div id="sprite-canvas-wrapper">
+              <canvas id="sprite-canvas"></canvas>
+            </div>
+            <div id="iso-canvas-wrapper" class="hidden" style="margin-top:8px;">
+              <div style="font-size:11px;color:#858585;margin-bottom:4px;">Isometric View</div>
+              <canvas id="iso-canvas"></canvas>
+            </div>
+          </div>
+
+          <div class="sprite-controls">
+            <label>
+              Grid Size
+              <select id="sprite-grid-size">
+                <option value="8x8">8×8</option>
+                <option value="16x16" selected>16×16</option>
+                <option value="32x32">32×32</option>
+                <option value="48x48">48×48</option>
+                <option value="64x64">64×64</option>
+              </select>
+            </label>
+
+            <label>
+              Color
+              <input type="color" id="sprite-color-input" value="#e94560">
+            </label>
+
+            <div>
+              <div style="font-size:11px;color:#858585;margin-bottom:4px;">Palette</div>
+              <div id="sprite-palette" class="sprite-palette"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ASSET MANAGER TAB -->
+      <div class="right-panel-content" data-panel="assets" id="asset-manager-panel">
+        <div style="padding:8px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="toolbar-btn" id="upload-image-btn">🖼 Upload Image</button>
+          <button class="toolbar-btn" id="upload-sound-btn">🔊 Upload Sound</button>
+          <input type="file" id="upload-image-input" accept="image/*" multiple style="display:none">
+          <input type="file" id="upload-sound-input" accept="audio/*" multiple style="display:none">
+        </div>
+
+        <div id="asset-drop-zone" class="asset-upload-area" style="margin:8px;">
+          <div style="font-size:24px;margin-bottom:6px;">📂</div>
+          <div>Drag &amp; drop images or sounds here</div>
+          <div style="font-size:11px;margin-top:4px;color:#666;">PNG, JPG, GIF, SVG, MP3, WAV, OGG</div>
+        </div>
+
+        <div id="asset-list-container" style="padding:0 8px 8px;overflow-y:auto;flex:1;"></div>
+      </div>
+
+      <!-- AI ASSISTANT TAB -->
+      <div class="right-panel-content" data-panel="ai" id="ai-panel">
+        <div class="ai-header">
+          <div style="font-size:11px;color:#858585;margin-bottom:4px;">Anthropic API Key</div>
+          <div class="ai-key-row">
+            <input type="password" id="ai-api-key-input" placeholder="sk-ant-..." autocomplete="off">
+            <button class="btn-small" id="ai-sprite-btn" title="Generate sprite from description">🎨 Sprite</button>
+            <button class="btn-small" id="ai-clear-btn" title="Clear chat history">🗑</button>
+          </div>
+          <div style="font-size:10px;color:#666;margin-top:4px;">Key stored locally in browser only</div>
+        </div>
+
+        <div class="ai-messages" id="ai-messages"></div>
+
+        <div class="ai-input-area">
+          <textarea id="ai-input" placeholder="Ask about Phaser.js, game mechanics, or request code changes... (Enter to send, Shift+Enter for newline)" rows="2"></textarea>
+          <div class="ai-btn-row">
+            <button class="ai-send-btn" id="ai-send-btn">➤ Send</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /right-panel -->
+
+  </div><!-- /main-area -->
+
+  <!-- DRAG HANDLE: BOTTOM -->
+  <div class="drag-handle horizontal" id="drag-bottom" title="Drag to resize console"></div>
+
+  <!-- BOTTOM CONSOLE -->
+  <div id="bottom-panel">
+    <div id="console-tabs">
+      <div class="console-tab active">🖥 Console</div>
+      <button id="console-clear-btn">Clear</button>
+    </div>
+    <div id="console-output"></div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div id="statusbar">
+    <div class="status-item">🎮 Browser Game IDE</div>
+    <div class="status-item" id="status-text">Loading...</div>
+    <div class="status-right">
+      <div class="status-item" id="status-mode">JavaScript · Phaser 3</div>
+      <div class="status-item">Monaco Editor</div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
+
+<!-- LOAD MODAL -->
+<div id="load-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <h3>📂 Load Project</h3>
+    <div class="project-list" id="project-list"></div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" id="load-cancel-btn">Cancel</button>
+      <button class="modal-btn primary" id="load-confirm-btn">Load</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div id="export-modal" class="modal-overlay hidden">
+  <div class="modal">
+    <h3>📦 Export Project</h3>
+    <p style="color:#858585;font-size:12px;margin-bottom:16px;">Choose an export format. All assets will be embedded.</p>
+
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button class="modal-btn primary" id="export-html-btn" style="text-align:left;padding:12px 16px;">
+        <div style="font-size:14px;font-weight:bold;">📄 Single HTML File</div>
+        <div style="font-size:11px;opacity:0.8;margin-top:2px;">Self-contained file with all assets embedded as base64</div>
+      </button>
+      <button class="modal-btn primary" id="export-zip-btn2" style="text-align:left;padding:12px 16px;">
+        <div style="font-size:14px;font-weight:bold;">🗜 ZIP Archive</div>
+        <div style="font-size:11px;opacity:0.8;margin-top:2px;">index.html + game.js + assets/ folder</div>
+      </button>
+    </div>
+
+    <div class="modal-btns" style="margin-top:16px;">
+      <button class="modal-btn cancel" id="export-cancel-btn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================
+     INLINE SCRIPT: Template snippets
+     ============================================================ -->
+<script>
+// Shooter template
+const SHOOTER_TEMPLATE = `
+// === TOP-DOWN SPACE SHOOTER ===
+const config = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 500,
+    backgroundColor: '#050510',
+    parent: 'game-container',
+    physics: { default: 'arcade', arcade: { debug: false } },
+    scene: { preload, create, update }
+};
+
+const game = new Phaser.Game(config);
+let player, bullets, enemies, cursors, score = 0, scoreText, fireKey;
+let lastFired = 0;
+
+function preload() {}
+
+function create() {
+    // Stars
+    for (let i = 0; i < 100; i++) {
+        const x = Phaser.Math.Between(0, 800);
+        const y = Phaser.Math.Between(0, 500);
+        this.add.circle(x, y, Math.random() < 0.3 ? 2 : 1, 0xffffff, Math.random() * 0.8 + 0.2);
+    }
+
+    // Player ship
+    player = this.add.triangle(400, 450, 0, 30, 20, -15, -20, -15, 0x00aaff);
+    this.physics.add.existing(player);
+    player.body.setCollideWorldBounds(true);
+
+    // Groups
+    bullets = this.physics.add.group();
+    enemies = this.physics.add.group();
+
+    // Spawn enemies periodically
+    this.time.addEvent({
+        delay: 1200,
+        loop: true,
+        callback: spawnEnemy,
+        callbackScope: this
+    });
+
+    // Score
+    scoreText = this.add.text(10, 10, 'Score: 0', {
+        fontFamily: 'monospace', fontSize: '18px', fill: '#fff'
+    });
+
+    cursors = this.input.keyboard.createCursorKeys();
+    fireKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+    // Collisions
+    this.physics.add.overlap(bullets, enemies, hitEnemy, null, this);
+    this.physics.add.overlap(player, enemies, playerHit, null, this);
+
+    console.log('Shoot with SPACE, move with arrow keys!');
+}
+
+function spawnEnemy() {
+    const x = Phaser.Math.Between(20, 780);
+    const e = this.add.triangle(x, -20, 0, -20, 15, 15, -15, 15, 0xff3333);
+    this.physics.add.existing(e);
+    e.body.setVelocityY(Phaser.Math.Between(80, 160));
+    enemies.add(e);
+}
+
+function hitEnemy(bullet, enemy) {
+    bullet.destroy();
+    enemy.destroy();
+    score += 10;
+    scoreText.setText('Score: ' + score);
+}
+
+function playerHit(player, enemy) {
+    enemy.destroy();
+    scoreText.setText('GAME OVER! Score: ' + score).setStyle({ fill: '#ff3333' });
+    player.destroy();
+    console.log('Game over! Final score: ' + score);
+}
+
+function update(time) {
+    if (!player || !player.body) return;
+
+    player.body.setVelocity(0);
+    if (cursors.left.isDown) player.body.setVelocityX(-280);
+    else if (cursors.right.isDown) player.body.setVelocityX(280);
+    if (cursors.up.isDown) player.body.setVelocityY(-280);
+    else if (cursors.down.isDown) player.body.setVelocityY(280);
+
+    if (fireKey.isDown && time > lastFired + 200) {
+        lastFired = time;
+        const b = this.add.circle(player.x, player.y - 20, 4, 0x00ffff);
+        this.physics.add.existing(b);
+        b.body.setVelocityY(-600);
+        bullets.add(b);
+    }
+
+    // Cleanup
+    bullets.getChildren().forEach(b => { if (b.y < -10) b.destroy(); });
+    enemies.getChildren().forEach(e => { if (e.y > 520) e.destroy(); });
+}
+`;
+
+// Puzzle template (match grid)
+const PUZZLE_TEMPLATE = `
+// === SIMPLE GRID PUZZLE (Click to select & match) ===
+const COLS = 7, ROWS = 5;
+const CELL = 70;
+const COLORS = [0xe94560, 0x007acc, 0x4caf50, 0xf9ca24, 0x9c59d1];
+
+const config = {
+    type: Phaser.AUTO,
+    width: COLS * CELL + 20,
+    height: ROWS * CELL + 80,
+    backgroundColor: '#1a1a2e',
+    parent: 'game-container',
+    scene: { create, update }
+};
+const game = new Phaser.Game(config);
+
+let grid = [], selected = null, score = 0, scoreText;
+
+function create() {
+    const offsetX = 10, offsetY = 60;
+    scoreText = this.add.text(10, 10, 'Score: 0 | Click matching neighbors to clear',
+        { fontFamily: 'monospace', fontSize: '13px', fill: '#d4d4d4' });
+
+    for (let r = 0; r < ROWS; r++) {
+        grid[r] = [];
+        for (let c = 0; c < COLS; c++) {
+            const colorIdx = Phaser.Math.Between(0, COLORS.length - 1);
+            const x = offsetX + c * CELL + CELL/2;
+            const y = offsetY + r * CELL + CELL/2;
+            const rect = this.add.rectangle(x, y, CELL - 6, CELL - 6, COLORS[colorIdx]);
+            rect.setInteractive();
+            rect.colorIdx = colorIdx;
+            rect.row = r; rect.col = c;
+            rect.on('pointerdown', () => handleClick(this, rect));
+            rect.on('pointerover', () => { if (!rect.selected) rect.setAlpha(0.8); });
+            rect.on('pointerout', () => { if (!rect.selected) rect.setAlpha(1); });
+            grid[r][c] = rect;
+        }
+    }
+    console.log('Click two adjacent same-color tiles to remove them!');
+}
+
+function handleClick(scene, rect) {
+    if (!selected) {
+        selected = rect;
+        rect.selected = true;
+        rect.setStrokeStyle(3, 0xffffff);
+    } else if (selected === rect) {
+        selected.selected = false;
+        selected.setStrokeStyle(0);
+        selected = null;
+    } else {
+        const dr = Math.abs(rect.row - selected.row);
+        const dc = Math.abs(rect.col - selected.col);
+        const adjacent = (dr + dc === 1);
+        if (adjacent && rect.colorIdx === selected.colorIdx) {
+            rect.destroy(); grid[rect.row][rect.col] = null;
+            selected.destroy(); grid[selected.row][selected.col] = null;
+            score += 10;
+            scoreText.setText('Score: ' + score + ' | Click matching neighbors to clear');
+            console.log('Match! Score: ' + score);
+        } else {
+            selected.setStrokeStyle(0);
+            selected.selected = false;
+            scene.tweens.add({ targets: rect, x: rect.x + 5, yoyo: true, repeat: 2, duration: 50 });
+        }
+        selected = null;
+    }
+}
+
+function update() {}
+`;
+
+// Wire up template buttons after DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        const tplPlatformer = document.getElementById('tpl-platformer');
+        const tplShooter = document.getElementById('tpl-shooter');
+        const tplPuzzle = document.getElementById('tpl-puzzle');
+
+        if (tplPlatformer) tplPlatformer.addEventListener('click', () => {
+            if (confirm('Load platformer template? Current code will be replaced.')) {
+                EditorModule.setCode(DEFAULT_GAME_CODE);
+            }
+        });
+        if (tplShooter) tplShooter.addEventListener('click', () => {
+            if (confirm('Load shooter template? Current code will be replaced.')) {
+                EditorModule.setCode(SHOOTER_TEMPLATE.trim());
+            }
+        });
+        if (tplPuzzle) tplPuzzle.addEventListener('click', () => {
+            if (confirm('Load puzzle template? Current code will be replaced.')) {
+                EditorModule.setCode(PUZZLE_TEMPLATE.trim());
+            }
+        });
+
+        // Snippets
+        const snipPlayer = document.getElementById('snip-player');
+        const snipPlatform = document.getElementById('snip-platform');
+        const snipText = document.getElementById('snip-text');
+
+        if (snipPlayer) snipPlayer.addEventListener('click', () => {
+            EditorModule.insertAtCursor(`
+// Player with physics
+player = this.physics.add.rectangle(400, 300, 32, 48);
+player.body.setCollideWorldBounds(true);
+`);
+        });
+        if (snipPlatform) snipPlatform.addEventListener('click', () => {
+            EditorModule.insertAtCursor(`
+// Static platform
+const platform = this.add.rectangle(400, 400, 200, 20, 0x0f3460);
+this.physics.add.existing(platform, true);
+platforms.add(platform);
+`);
+        });
+        if (snipText) snipText.addEventListener('click', () => {
+            EditorModule.insertAtCursor(`
+// Text display
+const label = this.add.text(16, 16, 'Score: 0', {
+    fontFamily: 'monospace',
+    fontSize: '20px',
+    fill: '#ffffff'
+});
+`);
+        });
+    }, 500);
+});
+</script>
+
+<!-- Main app init -->
+<script src="app.js"></script>
+
+</body>
+</html>
