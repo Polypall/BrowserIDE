@@ -228,6 +228,143 @@ Created: ${new Date().toLocaleString()}
         downloadFile(`${safeName}.zip`, blob, 'application/zip');
     }
 
+    // ============================================================
+    // EXPORT: GitHub-ready repository zip
+    // ============================================================
+    async function exportGitHub(code, assets) {
+        if (typeof JSZip === 'undefined') throw new Error('JSZip not loaded');
+
+        const zip = new JSZip();
+        const safeName = currentProjectName.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase();
+
+        // index.html — standalone playable game
+        const html = exportHTML(code, assets);
+        zip.file('index.html', html);
+        zip.file('game.js', code);
+
+        // Assets folder
+        const assetsFolder = zip.folder('assets');
+        (assets || []).forEach(asset => {
+            if (asset.dataUrl) {
+                const base64Data = asset.dataUrl.split(',')[1];
+                if (base64Data) assetsFolder.file(asset.name, base64Data, { base64: true });
+            }
+        });
+
+        // README.md — GitHub Pages instructions
+        zip.file('README.md', `# ${currentProjectName}
+
+A browser game built with [Browser Game IDE](https://github.com/polypall/browseride) and [Phaser 3](https://phaser.io).
+
+## 🎮 Play Online
+
+This game is hosted on GitHub Pages: \`https://YOUR-USERNAME.github.io/${safeName}/\`
+
+## 🚀 How to host on GitHub Pages (free)
+
+1. Create a new GitHub repository named \`${safeName}\`
+2. Upload all these files to the repository
+3. Go to **Settings → Pages**
+4. Under "Source" select **Deploy from branch → main → / (root)**
+5. Click Save — your game will be live in ~1 minute!
+
+## 📁 Files
+
+- \`index.html\` — The playable game (open this in any browser)
+- \`game.js\` — Game source code
+- \`assets/\` — Images and sounds used by the game
+
+## 🛠️ Built with
+
+- [Phaser 3](https://phaser.io) — Game framework
+- [Browser Game IDE](https://github.com/polypall/browseride) — Created with
+
+---
+*Created: ${new Date().toLocaleString()}*
+`);
+
+        const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+        return blob;
+    }
+
+    async function downloadGitHubZip(code, assets) {
+        const blob = await exportGitHub(code, assets);
+        const safeName = currentProjectName.replace(/[^a-zA-Z0-9-_]/g, '_');
+        downloadFile(`${safeName}-github.zip`, blob, 'application/zip');
+    }
+
+    // ============================================================
+    // PUBLISH INSTRUCTIONS modal
+    // ============================================================
+    function showPublishModal() {
+        const existing = document.getElementById('publish-modal');
+        if (existing) { existing.style.display = 'flex'; return; }
+
+        const modal = document.createElement('div');
+        modal.id = 'publish-modal';
+        modal.style.cssText = `
+            position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;
+            display:flex;align-items:center;justify-content:center;font-family:inherit;
+        `;
+        modal.innerHTML = `
+        <div style="background:#252526;border:1px solid #3e3e42;border-radius:8px;padding:28px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;color:#d4d4d4;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h2 style="color:#4ec9b0;margin:0;">🌐 Publish Your Game</h2>
+                <button onclick="document.getElementById('publish-modal').style.display='none'"
+                    style="background:none;border:none;color:#858585;cursor:pointer;font-size:20px;">✕</button>
+            </div>
+
+            <p style="margin-bottom:20px;color:#9cdcfe;">Your game is a self-contained HTML file — it works anywhere that serves web pages. Here are your free options:</p>
+
+            <div class="publish-option" style="background:#1e1e1e;border-radius:6px;padding:16px;margin-bottom:12px;border-left:3px solid #4ec9b0;">
+                <h3 style="color:#4ec9b0;margin:0 0 6px">⭐ GitHub Pages (Recommended — Free Forever)</h3>
+                <ol style="padding-left:18px;line-height:1.8;font-size:13px;">
+                    <li>Click <strong>Export → GitHub Zip</strong> below to download your game</li>
+                    <li>Go to <a href="https://github.com/new" target="_blank" style="color:#569cd6;">github.com/new</a> and create a free account + new repository</li>
+                    <li>Upload the files from the zip to the repository</li>
+                    <li>Go to <strong>Settings → Pages → Deploy from branch → main</strong></li>
+                    <li>Your game is live at <code>https://your-username.github.io/your-game-name/</code></li>
+                </ol>
+            </div>
+
+            <div class="publish-option" style="background:#1e1e1e;border-radius:6px;padding:16px;margin-bottom:12px;border-left:3px solid #569cd6;">
+                <h3 style="color:#569cd6;margin:0 0 6px">⚡ Netlify Drop (Fastest — No Account Needed)</h3>
+                <ol style="padding-left:18px;line-height:1.8;font-size:13px;">
+                    <li>Click <strong>Export → Download HTML</strong> below</li>
+                    <li>Go to <a href="https://app.netlify.com/drop" target="_blank" style="color:#569cd6;">app.netlify.com/drop</a></li>
+                    <li>Drag your downloaded HTML file onto the page</li>
+                    <li>Get an instant public link — done in 30 seconds!</li>
+                </ol>
+            </div>
+
+            <div class="publish-option" style="background:#1e1e1e;border-radius:6px;padding:16px;margin-bottom:20px;border-left:3px solid #c586c0;">
+                <h3 style="color:#c586c0;margin:0 0 6px">📁 Share the File Directly</h3>
+                <p style="font-size:13px;line-height:1.6;">
+                    Click <strong>Export → Download HTML</strong> to save a single <code>.html</code> file.
+                    Anyone can open it in their browser — send it via email, Google Drive, Dropbox, or USB stick.
+                    No internet required to play (except for the Phaser CDN load on first open).
+                </p>
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button onclick="AppController && AppController.exportActions('html')"
+                    style="background:#007acc;color:#fff;border:none;padding:10px 18px;border-radius:5px;cursor:pointer;font-size:13px;">
+                    📥 Download HTML
+                </button>
+                <button onclick="AppController && AppController.exportActions('github')"
+                    style="background:#238636;color:#fff;border:none;padding:10px 18px;border-radius:5px;cursor:pointer;font-size:13px;">
+                    📦 GitHub Zip
+                </button>
+                <button onclick="AppController && AppController.exportActions('zip')"
+                    style="background:#3e3e42;color:#d4d4d4;border:none;padding:10px 18px;border-radius:5px;cursor:pointer;font-size:13px;">
+                    🗜️ Full Zip
+                </button>
+            </div>
+        </div>`;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+    }
+
     function escapeHtml(str) {
         return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
@@ -241,7 +378,10 @@ Created: ${new Date().toLocaleString()}
         setCurrentProjectName,
         exportHTML,
         exportZip,
+        exportGitHub,
         downloadHTML,
         downloadZip,
+        downloadGitHubZip,
+        showPublishModal,
     };
 })();

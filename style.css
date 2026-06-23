@@ -676,6 +676,25 @@ html, body {
 .ai-sprite-btn:hover { background: #e65100; }
 .ai-apply-btn { background: var(--green); color: #fff; }
 .ai-apply-btn:hover { background: var(--green-hover); }
+.ai-apply-btn.secondary { background: #3e3e42; color: #d4d4d4; }
+.ai-apply-btn.secondary:hover { background: #505050; }
+
+.quick-action-btn {
+    background: #2d2d30;
+    border: 1px solid #3e3e42;
+    color: #9cdcfe;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
+}
+.quick-action-btn:hover {
+    background: #094771;
+    border-color: #007acc;
+    color: #fff;
+}
 
 .ai-thinking {
     display: flex;

@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnStop = $('btn-stop');
     const btnExport = $('btn-export');
     const btnExportZip = $('btn-export-zip');
+    const btnPublish = $('btn-publish');
     const projectNameInput = $('project-name-input');
 
     const consoleOutput = $('console-output');
@@ -302,9 +303,18 @@ document.addEventListener('DOMContentLoaded', () => {
         sendBtn: aiSendBtn,
         apiKeyInput: aiApiKeyInput,
         getEditorCode: () => EditorModule.getCode(),
-        onInsertCode: (code) => {
-            EditorModule.insertAtCursor('\n' + code + '\n');
-            setStatus('AI code inserted');
+        onInsertCode: (code, replace) => {
+            if (replace) {
+                EditorModule.setCode(code);
+                setStatus('AI code applied — hit ▶ Run to play!');
+            } else {
+                EditorModule.insertAtCursor('\n' + code + '\n');
+                setStatus('AI code inserted');
+            }
+        },
+        onReplaceCode: (code) => {
+            EditorModule.setCode(code);
+            setStatus('AI code applied — hit ▶ Run to play!');
         },
         onSpriteCode: (code) => {
             // Apply to sprite editor
@@ -424,6 +434,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    if (btnPublish) {
+        btnPublish.addEventListener('click', () => ProjectManager.showPublishModal());
+    }
+
+    // Global export action handler used by publish modal buttons
+    window.AppController = {
+        exportActions: async (type) => {
+            const code = EditorModule.getCode();
+            const assets = AssetManager.listAssets();
+            if (type === 'html') {
+                ProjectManager.downloadHTML(code, assets);
+                setStatus('HTML exported — ready to share!');
+            } else if (type === 'zip') {
+                await ProjectManager.downloadZip(code, assets);
+                setStatus('ZIP exported');
+            } else if (type === 'github') {
+                await ProjectManager.downloadGitHubZip(code, assets);
+                setStatus('GitHub zip exported — see README.md for upload instructions!');
+            }
+        }
+    };
 
     // Project name
     if (projectNameInput) {

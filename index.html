@@ -45,7 +45,8 @@
 
     <div class="toolbar-sep"></div>
 
-    <button class="toolbar-btn accent" id="btn-export" title="Export project (Ctrl+Shift+E)">📦 Export HTML</button>
+    <button class="toolbar-btn accent" id="btn-export" title="Export project (Ctrl+Shift+E)">📥 Export HTML</button>
+    <button class="toolbar-btn" id="btn-publish" title="Publish / share your game online">🌐 Publish</button>
     <button class="toolbar-btn" id="btn-export-zip" title="Export as ZIP">🗜 ZIP</button>
   </div>
 
@@ -218,8 +219,11 @@
 
         <div class="ai-messages" id="ai-messages"></div>
 
+        <!-- Quick Action Buttons -->
+        <div id="ai-quick-actions" style="display:flex;flex-wrap:wrap;gap:5px;padding:8px 10px;border-top:1px solid #3e3e42;border-bottom:1px solid #3e3e42;"></div>
+
         <div class="ai-input-area">
-          <textarea id="ai-input" placeholder="Ask about Phaser.js, game mechanics, or request code changes... (Enter to send, Shift+Enter for newline)" rows="2"></textarea>
+          <textarea id="ai-input" placeholder="Describe your game idea or ask for help... (Enter to send)" rows="2"></textarea>
           <div class="ai-btn-row">
             <button class="ai-send-btn" id="ai-send-btn">➤ Send</button>
           </div>
