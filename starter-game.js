@@ -1,7 +1,7 @@
 // Default starter game — a complete working Phaser 3 game
 const DEFAULT_GAME_CODE = `
 // ==========================================
-// BROWSER GAME IDE - STARTER GAME
+// INDICOLITE - STARTER GAME
 // A simple platformer with movement & score
 // ==========================================
 

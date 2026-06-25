@@ -3,7 +3,7 @@
 // ============================================================
 
 const ProjectManager = (() => {
-    const PROJECTS_KEY = 'browseride_projects';
+    const PROJECTS_KEY = 'indicolite_projects';
     let currentProjectName = 'My Game';
 
     function loadProjects() {
@@ -183,7 +183,7 @@ ${code}
         zip.file('README.txt', `${currentProjectName}
 ${'='.repeat(currentProjectName.length)}
 
-This game was created with Browser Game IDE.
+This game was created with Indicolite.
 
 To run:
 1. Open index.html in a web browser (requires internet for Phaser CDN)
@@ -254,7 +254,7 @@ Created: ${new Date().toLocaleString()}
         // README.md — GitHub Pages instructions
         zip.file('README.md', `# ${currentProjectName}
 
-A browser game built with [Browser Game IDE](https://github.com/polypall/browseride) and [Phaser 3](https://phaser.io).
+A browser game built with [Indicolite](https://github.com/polypall/browseride) and [Phaser 3](https://phaser.io).
 
 ## 🎮 Play Online
 
@@ -277,7 +277,7 @@ This game is hosted on GitHub Pages: \`https://YOUR-USERNAME.github.io/${safeNam
 ## 🛠️ Built with
 
 - [Phaser 3](https://phaser.io) — Game framework
-- [Browser Game IDE](https://github.com/polypall/browseride) — Created with
+- [Indicolite](https://github.com/polypall/browseride) — Created with
 
 ---
 *Created: ${new Date().toLocaleString()}*

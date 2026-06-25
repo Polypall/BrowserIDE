@@ -3,7 +3,7 @@
 // ============================================================
 
 const AssetManager = (() => {
-    const STORAGE_KEY = 'browseride_assets';
+    const STORAGE_KEY = 'indicolite_assets';
     let assets = {}; // { name: { type, dataUrl, size } }
     let insertCallback = null;
     let listContainer = null;

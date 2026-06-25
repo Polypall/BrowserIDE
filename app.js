@@ -723,6 +723,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================================
     // INIT COMPLETE
     // ============================================================
-    console.info('🎮 Browser Game IDE loaded! Press F5 or click Run to start your game.');
+    console.info('🎮 Indicolite loaded! Press F5 or click Run to start your game.');
     setStatus('Ready');
 });
