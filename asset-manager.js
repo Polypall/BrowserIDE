@@ -83,12 +83,19 @@ const AssetManager = (() => {
         return assets[name] || null;
     }
 
-    function getAssetCode(name) {
+    function getAssetCode(name, usage) {
         const asset = assets[name];
         if (!asset) return `// Asset "${name}" not found`;
 
         if (asset.type === 'image') {
-            return `// Load asset in preload():\nthis.load.image('${name}', window.__ASSETS__['${name}']);\n\n// Use in create():\nconst sprite = this.add.image(400, 300, '${name}');`;
+            if (usage === 'background') {
+                return `// ---- BACKGROUND IMAGE ----\n// In preload():\nthis.load.image('${name}', window.__ASSETS__['${name}']);\n\n// In create():\n// Stretch to fill the whole game canvas:\nthis.add.image(400, 300, '${name}').setDisplaySize(800, 450);\n// Or tile it across the background:\n// this.add.tileSprite(0, 0, 800, 450, '${name}').setOrigin(0, 0);`;
+            }
+            if (usage === 'sprite') {
+                return `// ---- CHARACTER / SPRITE ----\n// In preload():\nthis.load.image('${name}', window.__ASSETS__['${name}']);\n\n// In create():\nconst player = this.physics.add.sprite(100, 300, '${name}');\nplayer.setCollideWorldBounds(true);`;
+            }
+            // Default: show both options
+            return `// Load in preload():\nthis.load.image('${name}', window.__ASSETS__['${name}']);\n\n// Use as BACKGROUND in create():\nthis.add.image(400, 300, '${name}').setDisplaySize(800, 450);\n\n// OR use as CHARACTER/SPRITE in create():\n// const player = this.physics.add.sprite(100, 300, '${name}');\n// player.setCollideWorldBounds(true);`;
         } else if (asset.type === 'sound') {
             return `// Load sound in preload():\nthis.load.audio('${name}', window.__ASSETS__['${name}']);\n\n// Play in create() or update():\nconst snd = this.sound.add('${name}');\nsnd.play();`;
         }
@@ -139,7 +146,7 @@ const AssetManager = (() => {
             images.forEach(asset => {
                 const item = document.createElement('div');
                 item.className = 'asset-item';
-                item.title = `${asset.name}\n${formatSize(asset.size)}\nClick to insert code`;
+                item.title = `${asset.name}\n${formatSize(asset.size)}\nClick to use as background or character`;
 
                 const deleteBtn = document.createElement('span');
                 deleteBtn.className = 'asset-delete';
@@ -166,7 +173,7 @@ const AssetManager = (() => {
                 grid.appendChild(item);
 
                 item.addEventListener('click', () => {
-                    if (insertCallback) insertCallback(getAssetCode(asset.name));
+                    showImageUsageMenu(asset.name, item);
                 });
             });
         }
@@ -203,6 +210,42 @@ const AssetManager = (() => {
                 listContainer.appendChild(item);
             });
         }
+    }
+
+    function showImageUsageMenu(name, anchorEl) {
+        // Remove any existing menu
+        const old = document.getElementById('asset-usage-menu');
+        if (old) old.remove();
+
+        const menu = document.createElement('div');
+        menu.id = 'asset-usage-menu';
+        const rect = anchorEl.getBoundingClientRect();
+        menu.style.cssText = `
+            position:fixed;left:${rect.right + 6}px;top:${rect.top}px;
+            background:#2d2d30;border:1px solid #007acc;border-radius:6px;
+            z-index:9999;padding:6px;display:flex;flex-direction:column;gap:4px;
+            box-shadow:0 4px 16px rgba(0,0,0,0.5);min-width:190px;font-family:inherit;
+        `;
+        menu.innerHTML = `
+            <div style="font-size:11px;color:#858585;padding:2px 6px;border-bottom:1px solid #3e3e42;margin-bottom:2px;">Use <strong style="color:#9cdcfe">${name}</strong> as:</div>
+            <button class="asset-use-btn" data-usage="background">🌄 Background Image</button>
+            <button class="asset-use-btn" data-usage="sprite">🧍 Character / Sprite</button>
+            <button class="asset-use-btn" data-usage="both">📋 Show Both Code Options</button>
+        `;
+        menu.querySelectorAll('.asset-use-btn').forEach(btn => {
+            btn.style.cssText = 'background:#3e3e42;border:none;color:#d4d4d4;padding:7px 12px;border-radius:4px;cursor:pointer;text-align:left;font-size:12px;';
+            btn.onmouseenter = () => btn.style.background = '#094771';
+            btn.onmouseleave = () => btn.style.background = '#3e3e42';
+            btn.addEventListener('click', () => {
+                const usage = btn.dataset.usage === 'both' ? null : btn.dataset.usage;
+                if (insertCallback) insertCallback(getAssetCode(name, usage));
+                menu.remove();
+            });
+        });
+
+        document.body.appendChild(menu);
+        const close = (e) => { if (!menu.contains(e.target) && e.target !== anchorEl) { menu.remove(); document.removeEventListener('click', close); } };
+        setTimeout(() => document.addEventListener('click', close), 10);
     }
 
     return {
