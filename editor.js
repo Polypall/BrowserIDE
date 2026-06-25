@@ -42,57 +42,21 @@ const EditorModule = (() => {
         { label: 'Phaser.Input.Keyboard.KeyCodes', kind: 'Namespace', detail: 'Key code constants' },
     ];
 
-    function init(containerId, initialCode) {
-        return new Promise((resolve) => {
-            require.config({
-                paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' }
-            });
-
-            require(['vs/editor/editor.main'], () => {
-                // Register Phaser completions
-                monaco.languages.registerCompletionItemProvider('javascript', {
-                    provideCompletionItems: (model, position) => {
-                        const suggestions = PHASER_COMPLETIONS.map(item => ({
-                            label: item.label,
-                            kind: monaco.languages.CompletionItemKind[item.kind] || monaco.languages.CompletionItemKind.Value,
-                            detail: item.detail,
-                            insertText: item.label.split('.').pop(),
-                            documentation: item.detail,
-                        }));
-                        return { suggestions };
-                    }
-                });
-
-                // Add Phaser type definitions as a library
-                const phaserDts = `
+    function setupEditor(containerId, initialCode, resolve) {
+        const phaserDts = `
 declare namespace Phaser {
     const AUTO: number;
     const CANVAS: number;
     const WEBGL: number;
-    class Game {
-        constructor(config: GameConfig);
-        destroy(removeCanvas: boolean): void;
-    }
+    class Game { constructor(config: GameConfig); destroy(removeCanvas: boolean): void; }
     class Scene {
-        add: GameObjectFactory;
-        physics: Physics;
-        input: Input;
-        cameras: CameraManager;
-        tweens: TweenManager;
-        time: TimeManager;
-        sound: SoundManager;
-        load: LoaderPlugin;
-        anims: AnimationManager;
-        sys: Systems;
+        add: any; physics: any; input: any; cameras: any;
+        tweens: any; time: any; sound: any; load: any; anims: any; sys: any;
     }
     interface GameConfig {
-        type?: number;
-        width?: number;
-        height?: number;
-        backgroundColor?: string | number;
-        parent?: string | HTMLElement;
-        physics?: PhysicsConfig;
-        scene?: any;
+        type?: number; width?: number; height?: number;
+        backgroundColor?: string | number; parent?: string | HTMLElement;
+        physics?: any; scene?: any;
     }
     namespace Math {
         function Between(min: number, max: number): number;
@@ -101,52 +65,80 @@ declare namespace Phaser {
         function RadToDeg(radians: number): number;
         function DegToRad(degrees: number): number;
     }
-    namespace Input {
-        namespace Keyboard {
-            function JustDown(key: any): boolean;
-            function JustUp(key: any): boolean;
-            namespace KeyCodes {
-                const W: number; const A: number; const S: number; const D: number;
-                const SPACE: number; const SHIFT: number; const CTRL: number;
-                const UP: number; const DOWN: number; const LEFT: number; const RIGHT: number;
-            }
+    namespace Input { namespace Keyboard {
+        function JustDown(key: any): boolean;
+        function JustUp(key: any): boolean;
+        namespace KeyCodes {
+            const W: number; const A: number; const S: number; const D: number;
+            const SPACE: number; const SHIFT: number; const CTRL: number;
+            const UP: number; const DOWN: number; const LEFT: number; const RIGHT: number;
         }
+    } }
+}`;
+
+        monaco.languages.registerCompletionItemProvider('javascript', {
+            provideCompletionItems: () => ({
+                suggestions: PHASER_COMPLETIONS.map(item => ({
+                    label: item.label,
+                    kind: monaco.languages.CompletionItemKind[item.kind] || monaco.languages.CompletionItemKind.Value,
+                    detail: item.detail,
+                    insertText: item.label.split('.').pop(),
+                    documentation: item.detail,
+                }))
+            })
+        });
+
+        monaco.languages.typescript.javascriptDefaults.addExtraLib(phaserDts, 'phaser.d.ts');
+        monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+            noSemanticValidation: true,
+            noSyntaxValidation: false
+        });
+
+        editor = monaco.editor.create(document.getElementById(containerId), {
+            value: initialCode || '',
+            language: 'javascript',
+            theme: 'vs-dark',
+            fontSize: 14,
+            fontFamily: "'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace",
+            fontLigatures: true,
+            minimap: { enabled: true, scale: 0.8 },
+            scrollBeyondLastLine: false,
+            wordWrap: 'off',
+            lineNumbers: 'on',
+            renderLineHighlight: 'all',
+            cursorBlinking: 'phase',
+            suggestOnTriggerCharacters: true,
+            quickSuggestions: true,
+            tabSize: 4,
+            formatOnPaste: true,
+            bracketPairColorization: { enabled: true },
+            smoothScrolling: true,
+            padding: { top: 8 },
+        });
+
+        editor.onDidChangeModelContent(() => {
+            if (changeCallback) changeCallback(editor.getValue());
+        });
+
+        resolve(editor);
     }
-}
-`;
-                monaco.languages.typescript.javascriptDefaults.addExtraLib(phaserDts, 'phaser.d.ts');
-                monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-                    noSemanticValidation: true,
-                    noSyntaxValidation: false
-                });
 
-                editor = monaco.editor.create(document.getElementById(containerId), {
-                    value: initialCode || '',
-                    language: 'javascript',
-                    theme: 'vs-dark',
-                    fontSize: 14,
-                    fontFamily: "'Cascadia Code', 'Fira Code', Consolas, 'Courier New', monospace",
-                    fontLigatures: true,
-                    minimap: { enabled: true, scale: 0.8 },
-                    scrollBeyondLastLine: false,
-                    wordWrap: 'off',
-                    lineNumbers: 'on',
-                    renderLineHighlight: 'all',
-                    cursorBlinking: 'phase',
-                    suggestOnTriggerCharacters: true,
-                    quickSuggestions: true,
-                    tabSize: 4,
-                    formatOnPaste: true,
-                    bracketPairColorization: { enabled: true },
-                    smoothScrolling: true,
-                    padding: { top: 8 },
-                });
+    function init(containerId, initialCode) {
+        if (editor) return Promise.resolve();
+        return new Promise((resolve) => {
+            require.config({
+                paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' }
+            });
 
-                editor.onDidChangeModelContent(() => {
-                    if (changeCallback) changeCallback(editor.getValue());
-                });
+            // If Monaco already loaded (e.g. page kept alive), skip require to avoid
+            // "Duplicate definition" warning and go straight to editor creation.
+            if (window.monaco) {
+                setupEditor(containerId, initialCode, resolve);
+                return;
+            }
 
-                resolve(editor);
+            require(['vs/editor/editor.main'], () => {
+                setupEditor(containerId, initialCode, resolve);
             });
         });
     }
