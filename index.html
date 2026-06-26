@@ -35,8 +35,11 @@
     <div class="toolbar-sep"></div>
 
     <button class="toolbar-btn" id="btn-new" title="New project (clears current)">📄 New</button>
-    <button class="toolbar-btn" id="btn-save" title="Save project (Ctrl+S)">💾 Save</button>
-    <button class="toolbar-btn" id="btn-load" title="Load saved project">📂 Load</button>
+    <button class="toolbar-btn" id="btn-save" title="Save project to browser (Ctrl+S)">💾 Save</button>
+    <button class="toolbar-btn" id="btn-load" title="Load saved project from browser">📂 Load</button>
+    <button class="toolbar-btn accent" id="btn-save-file" title="Save project to a file on your computer — use this on library computers!">⬇ Save File</button>
+    <button class="toolbar-btn" id="btn-load-file" title="Open a project file from your computer">⬆ Open File</button>
+    <input type="file" id="load-file-input" accept=".indicolite,.json" style="display:none">
 
     <div class="toolbar-sep"></div>
 
@@ -189,17 +192,35 @@
 
       <!-- ASSET MANAGER TAB -->
       <div class="right-panel-content" data-panel="assets" id="asset-manager-panel">
-        <div style="padding:8px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="toolbar-btn" id="upload-image-btn">🖼 Upload Image</button>
-          <button class="toolbar-btn" id="upload-sound-btn">🔊 Upload Sound</button>
-          <input type="file" id="upload-image-input" accept="image/*" multiple style="display:none">
-          <input type="file" id="upload-sound-input" accept="audio/*" multiple style="display:none">
-        </div>
 
-        <div id="asset-drop-zone" class="asset-upload-area" style="margin:8px;">
-          <div style="font-size:24px;margin-bottom:6px;">📂</div>
-          <div>Drag &amp; drop images or sounds here</div>
-          <div style="font-size:11px;margin-top:4px;color:#666;">PNG, JPG, GIF, SVG, MP3, WAV, OGG</div>
+        <!-- Upload buttons by category -->
+        <div class="asset-upload-grid">
+          <div class="asset-upload-cat" style="border-color:#4ec9b0">
+            <div class="asset-upload-cat-label" style="color:#4ec9b0">🌄 Background</div>
+            <button class="asset-cat-btn" data-category="background" data-accept="image/*">+ Upload</button>
+          </div>
+          <div class="asset-upload-cat" style="border-color:#569cd6">
+            <div class="asset-upload-cat-label" style="color:#569cd6">🧍 Character</div>
+            <button class="asset-cat-btn" data-category="character" data-accept="image/*">+ Upload</button>
+          </div>
+          <div class="asset-upload-cat" style="border-color:#c586c0">
+            <div class="asset-upload-cat-label" style="color:#c586c0">🎯 Object</div>
+            <button class="asset-cat-btn" data-category="object" data-accept="image/*">+ Upload</button>
+          </div>
+          <div class="asset-upload-cat" style="border-color:#dcdcaa">
+            <div class="asset-upload-cat-label" style="color:#dcdcaa">🔊 Sound</div>
+            <button class="asset-cat-btn" data-category="sound" data-accept="audio/*">+ Upload</button>
+          </div>
+        </div>
+        <!-- Hidden file inputs -->
+        <input type="file" id="upload-image-input" accept="image/*" multiple style="display:none">
+        <input type="file" id="upload-sound-input" accept="audio/*" multiple style="display:none">
+        <input type="file" id="upload-cat-input" accept="image/*,audio/*" multiple style="display:none">
+
+        <div id="asset-drop-zone" class="asset-upload-area" style="margin:6px 8px;">
+          <div style="font-size:18px;margin-bottom:4px;">📂</div>
+          <div style="font-size:12px;">Drag &amp; drop here — will ask which category</div>
+          <div style="font-size:11px;margin-top:2px;color:#666;">PNG, JPG, GIF, MP3, WAV, OGG</div>
         </div>
 
         <div id="asset-list-container" style="padding:0 8px 8px;overflow-y:auto;flex:1;"></div>

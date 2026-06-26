@@ -241,56 +241,150 @@ document.addEventListener('DOMContentLoaded', () => {
         setStatus('Asset code inserted');
     });
 
-    // Upload buttons
-    const uploadImageBtn = $('upload-image-btn');
+    // ============================================================
+    // CATEGORIZED UPLOAD BUTTONS
+    // ============================================================
+    const uploadCatInput = $('upload-cat-input');
+
+    // Wire the 4 category upload buttons
+    document.querySelectorAll('.asset-cat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!uploadCatInput) return;
+            uploadCatInput.accept = btn.dataset.accept || 'image/*,audio/*';
+            uploadCatInput.dataset.category = btn.dataset.category;
+            uploadCatInput.value = '';
+            uploadCatInput.click();
+        });
+    });
+
+    if (uploadCatInput) {
+        uploadCatInput.addEventListener('change', async (e) => {
+            const category = uploadCatInput.dataset.category || 'character';
+            for (const file of e.target.files) {
+                const name = await AssetManager.uploadFile(file, category);
+                setStatus(`Uploaded to ${category}: ${name}`);
+                console.info(`Asset uploaded [${category}]: ${name}`);
+            }
+            uploadCatInput.value = '';
+            switchRightTab('assets');
+        });
+    }
+
+    // Legacy inputs (still used by game-runner asset injection)
     const uploadImageInput = $('upload-image-input');
-    const uploadSoundBtn = $('upload-sound-btn');
     const uploadSoundInput = $('upload-sound-input');
 
-    if (uploadImageBtn && uploadImageInput) {
-        uploadImageBtn.addEventListener('click', () => uploadImageInput.click());
-        uploadImageInput.addEventListener('change', async (e) => {
-            for (const file of e.target.files) {
-                const name = await AssetManager.uploadImage(file);
-                setStatus(`Image uploaded: ${name}`);
-                console.info(`Asset uploaded: ${name}`);
-            }
-            uploadImageInput.value = '';
-        });
-    }
-
-    if (uploadSoundBtn && uploadSoundInput) {
-        uploadSoundBtn.addEventListener('click', () => uploadSoundInput.click());
-        uploadSoundInput.addEventListener('change', async (e) => {
-            for (const file of e.target.files) {
-                const name = await AssetManager.uploadSound(file);
-                setStatus(`Sound uploaded: ${name}`);
-            }
-            uploadSoundInput.value = '';
-        });
-    }
-
-    // Drag-and-drop on asset panel
+    // Drag-and-drop — ask category for dropped images
     const assetDropZone = $('asset-drop-zone');
     if (assetDropZone) {
-        assetDropZone.addEventListener('dragover', (e) => {
+        assetDropZone.addEventListener('dragover', e => {
             e.preventDefault();
             assetDropZone.style.borderColor = 'var(--accent)';
         });
         assetDropZone.addEventListener('dragleave', () => {
             assetDropZone.style.borderColor = '';
         });
-        assetDropZone.addEventListener('drop', async (e) => {
+        assetDropZone.addEventListener('drop', async e => {
             e.preventDefault();
             assetDropZone.style.borderColor = '';
-            const files = e.dataTransfer.files;
+            const files = Array.from(e.dataTransfer.files);
             for (const file of files) {
-                if (file.type.startsWith('image/')) {
-                    await AssetManager.uploadImage(file);
-                } else if (file.type.startsWith('audio/')) {
-                    await AssetManager.uploadSound(file);
+                if (file.type.startsWith('audio/')) {
+                    await AssetManager.uploadFile(file, 'sound');
+                } else if (file.type.startsWith('image/')) {
+                    // Ask which category for images
+                    const cats = ['background', 'character', 'object'];
+                    const labels = ['🌄 Background', '🧍 Character', '🎯 Object'];
+                    const choice = await showDropCategoryPicker(file.name, labels);
+                    const category = choice !== null ? cats[choice] : 'character';
+                    await AssetManager.uploadFile(file, category);
                 }
+                setStatus(`Asset uploaded: ${file.name}`);
             }
+        });
+    }
+
+    function showDropCategoryPicker(filename, labels) {
+        return new Promise(resolve => {
+            const old = document.getElementById('drop-cat-picker');
+            if (old) old.remove();
+            const modal = document.createElement('div');
+            modal.id = 'drop-cat-picker';
+            modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+            modal.innerHTML = `<div style="background:#252526;border:1px solid #007acc;border-radius:8px;padding:20px;min-width:260px;font-family:inherit;">
+                <div style="color:#9cdcfe;font-size:13px;margin-bottom:12px;">What is <strong>${filename}</strong>?</div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    ${labels.map((l, i) => `<button class="dcp-btn" data-i="${i}" style="background:#3e3e42;border:none;color:#d4d4d4;padding:10px;border-radius:5px;cursor:pointer;font-size:13px;text-align:left;">${l}</button>`).join('')}
+                </div>
+            </div>`;
+            document.body.appendChild(modal);
+            modal.querySelectorAll('.dcp-btn').forEach(b => {
+                b.onmouseenter = () => b.style.background = '#094771';
+                b.onmouseleave = () => b.style.background = '#3e3e42';
+                b.addEventListener('click', () => { modal.remove(); resolve(parseInt(b.dataset.i)); });
+            });
+        });
+    }
+
+    // ============================================================
+    // FILE SAVE / LOAD (for library computers — bypasses localStorage wipe)
+    // ============================================================
+    const btnSaveFile = $('btn-save-file');
+    const btnLoadFile = $('btn-load-file');
+    const loadFileInput = $('load-file-input');
+
+    if (btnSaveFile) {
+        btnSaveFile.addEventListener('click', () => {
+            const projectName = ProjectManager.getCurrentProjectName();
+            const code = EditorModule.getCode();
+            const assets = AssetManager.getAllAssetsRaw();
+            const payload = {
+                _format: 'indicolite-project',
+                _version: 1,
+                name: projectName,
+                savedAt: new Date().toISOString(),
+                code,
+                assets,
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const safeName = projectName.replace(/[^a-zA-Z0-9-_]/g, '_');
+            a.download = `${safeName}.indicolite`;
+            a.href = url;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            setStatus(`Project saved as ${safeName}.indicolite — keep this file safe!`);
+            console.info(`Project file saved: ${safeName}.indicolite`);
+        });
+    }
+
+    if (btnLoadFile && loadFileInput) {
+        btnLoadFile.addEventListener('click', () => loadFileInput.click());
+        loadFileInput.addEventListener('change', async e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            try {
+                const text = await file.text();
+                const payload = JSON.parse(text);
+                if (payload._format !== 'indicolite-project') {
+                    alert('This file doesn\'t look like an Indicolite project file.');
+                    return;
+                }
+                if (!confirm(`Load project "${payload.name}"? This will replace your current code and assets.`)) return;
+
+                EditorModule.setCode(payload.code || '');
+                AssetManager.loadFromObject(payload.assets || {});
+                ProjectManager.setCurrentProjectName(payload.name || 'My Game');
+                const nameInput = $('project-name-input');
+                if (nameInput) nameInput.value = payload.name || 'My Game';
+                setStatus(`Project loaded: ${payload.name}`);
+                console.info(`Loaded project file: ${file.name}`);
+                switchRightTab('assets');
+            } catch (err) {
+                alert('Could not read project file: ' + err.message);
+            }
+            loadFileInput.value = '';
         });
     }
 
