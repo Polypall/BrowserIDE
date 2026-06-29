@@ -1016,3 +1016,92 @@ html, body {
     animation: spin 0.7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   FOOTER STATUS LINKS
+   ============================================================ */
+.status-link {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 11px;
+    padding: 0 8px;
+    border-left: 1px solid var(--border);
+    transition: color 0.15s;
+    white-space: nowrap;
+}
+.status-link:hover { color: var(--accent); }
+
+/* ============================================================
+   DISCLAIMER MODAL
+   ============================================================ */
+#disclaimer-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+#disclaimer-modal.show { display: flex; }
+
+.disclaimer-box {
+    background: var(--bg-panel);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 28px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 88vh;
+    overflow-y: auto;
+    color: var(--text);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+.disclaimer-box h2 {
+    color: var(--accent);
+    margin-bottom: 12px;
+    font-size: 18px;
+}
+.disclaimer-box p { margin: 10px 0; font-size: 13px; line-height: 1.6; }
+.disclaimer-box ul { margin: 14px 0; padding-left: 18px; }
+.disclaimer-box li { margin: 10px 0; font-size: 13px; line-height: 1.6; }
+.disclaimer-box code {
+    background: var(--bg-dark);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #9cdcfe;
+}
+.disclaimer-warn {
+    background: rgba(255, 152, 0, 0.12);
+    border-left: 3px solid var(--orange);
+    padding: 10px 12px;
+    border-radius: 4px;
+    color: #ffcc80 !important;
+}
+.disclaimer-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 18px 0;
+    font-size: 13px;
+    line-height: 1.5;
+    cursor: pointer;
+    background: var(--bg-dark);
+    padding: 12px;
+    border-radius: 6px;
+}
+.disclaimer-check input { margin-top: 3px; flex-shrink: 0; width: 16px; height: 16px; cursor: pointer; }
+#disclaimer-agree-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 11px 22px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.15s, opacity 0.15s;
+}
+#disclaimer-agree-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+#disclaimer-agree-btn:not(:disabled):hover { background: var(--accent-hover); }

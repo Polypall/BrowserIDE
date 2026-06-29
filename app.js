@@ -102,8 +102,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const _origError = console.error;
     const _origInfo = console.info;
 
+    // Harmless internal warnings from CDN libraries we don't want to scare users with
+    const SUPPRESSED = [
+        "Duplicate definition of module 'vs/editor/editor.main'",
+    ];
+    function isSuppressed(args) {
+        const msg = args.map(a => typeof a === 'string' ? a : '').join(' ');
+        return SUPPRESSED.some(s => msg.includes(s));
+    }
+
     console.log = (...args) => { _origLog(...args); appendConsole('log', args); };
-    console.warn = (...args) => { _origWarn(...args); appendConsole('warn', args); };
+    console.warn = (...args) => { _origWarn(...args); if (!isSuppressed(args)) appendConsole('warn', args); };
     console.error = (...args) => { _origError(...args); appendConsole('error', args); };
     console.info = (...args) => { _origInfo(...args); appendConsole('info', args); };
 
@@ -813,6 +822,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     renderFileTree();
+
+    // ============================================================
+    // DISCLAIMER / SAVING AGREEMENT
+    // ============================================================
+    const DISCLAIMER_KEY = 'indicolite_disclaimer_agreed_v1';
+    const disclaimerModal = $('disclaimer-modal');
+    const disclaimerCheck = $('disclaimer-agree-check');
+    const disclaimerBtn = $('disclaimer-agree-btn');
+    const openDisclaimer = $('open-disclaimer');
+
+    function showDisclaimer(force) {
+        if (!disclaimerModal) return;
+        // When reopened from footer link, allow closing without re-agreeing
+        disclaimerModal.classList.add('show');
+        if (force && disclaimerCheck && localStorage.getItem(DISCLAIMER_KEY)) {
+            disclaimerCheck.checked = true;
+            if (disclaimerBtn) { disclaimerBtn.disabled = false; disclaimerBtn.textContent = 'Close'; }
+        }
+    }
+
+    if (disclaimerCheck && disclaimerBtn) {
+        disclaimerCheck.addEventListener('change', () => {
+            disclaimerBtn.disabled = !disclaimerCheck.checked;
+        });
+        disclaimerBtn.addEventListener('click', () => {
+            try { localStorage.setItem(DISCLAIMER_KEY, new Date().toISOString()); } catch (e) {}
+            disclaimerModal.classList.remove('show');
+        });
+    }
+
+    if (openDisclaimer) {
+        openDisclaimer.addEventListener('click', (e) => {
+            e.preventDefault();
+            showDisclaimer(true);
+        });
+    }
+
+    // Show on first visit (only if not previously agreed)
+    if (!localStorage.getItem(DISCLAIMER_KEY)) {
+        showDisclaimer(false);
+    }
 
     // ============================================================
     // INIT COMPLETE

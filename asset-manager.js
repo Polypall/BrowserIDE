@@ -3,12 +3,16 @@
 // ============================================================
 
 const AssetManager = (() => {
-    const STORAGE_KEY = 'indicolite_assets';
+    const STORAGE_KEY = 'indicolite_assets';   // legacy localStorage key (for migration)
+    const DB_NAME = 'indicolite_db';
+    const DB_STORE = 'assets';
+    const DB_RECORD = 'all';
 
     // Each asset: { name, category, type, dataUrl, size, originalName }
     let assets = {};
     let insertCallback = null;
     let listContainer = null;
+    let db = null;
 
     const CATEGORIES = [
         { id: 'background', label: '🌄 Backgrounds',  color: '#4ec9b0', desc: 'Sky, ground, room, level scenery' },
@@ -17,29 +21,79 @@ const AssetManager = (() => {
         { id: 'sound',      label: '🔊 Sounds',       color: '#dcdcaa', desc: 'Music, effects, voice' },
     ];
 
-    function loadFromStorage() {
+    // ============================================================
+    // IndexedDB — much larger storage than localStorage (~hundreds of MB)
+    // ============================================================
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            if (db) return resolve(db);
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = () => {
+                const d = req.result;
+                if (!d.objectStoreNames.contains(DB_STORE)) d.createObjectStore(DB_STORE);
+            };
+            req.onsuccess = () => { db = req.result; resolve(db); };
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    function idbGet() {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(DB_STORE, 'readonly');
+            const req = tx.objectStore(DB_STORE).get(DB_RECORD);
+            req.onsuccess = () => resolve(req.result || {});
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    function idbPut(value) {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(DB_STORE, 'readwrite');
+            tx.objectStore(DB_STORE).put(value, DB_RECORD);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    }
+
+    async function loadFromStorage() {
         try {
-            const data = localStorage.getItem(STORAGE_KEY);
-            if (data) assets = JSON.parse(data);
-            // Migrate old assets that have no category
+            await openDB();
+            assets = await idbGet();
+
+            // One-time migration: pull anything left in old localStorage into IDB
+            const legacy = localStorage.getItem(STORAGE_KEY);
+            if (legacy && Object.keys(assets).length === 0) {
+                try {
+                    assets = JSON.parse(legacy);
+                    await idbPut(assets);
+                } catch (e) { /* ignore bad legacy data */ }
+            }
+            // Free the old localStorage space regardless (it's tiny and causes quota errors)
+            try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+
+            // Migrate assets with no category
             Object.values(assets).forEach(a => {
                 if (!a.category) a.category = a.type === 'sound' ? 'sound' : 'character';
             });
-        } catch (e) { assets = {}; }
-    }
-
-    function saveToStorage() {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(assets));
         } catch (e) {
-            console.warn('Asset storage full:', e.message);
+            console.warn('Could not open asset database:', e.message);
+            assets = {};
         }
     }
 
-    function init(containerEl, onInsert) {
+    async function saveToStorage() {
+        try {
+            await openDB();
+            await idbPut(assets);
+        } catch (e) {
+            console.warn('Could not save assets:', e.message);
+        }
+    }
+
+    async function init(containerEl, onInsert) {
         listContainer = containerEl;
         insertCallback = onInsert;
-        loadFromStorage();
+        await loadFromStorage();
         renderAssetList();
     }
 
@@ -57,7 +111,7 @@ const AssetManager = (() => {
         const name = sanitizeName(file.name);
         const type = file.type.startsWith('audio') ? 'sound' : 'image';
         assets[name] = { type, category, dataUrl, size: file.size, originalName: file.name };
-        saveToStorage();
+        await saveToStorage();
         renderAssetList();
         return name;
     }
@@ -80,9 +134,9 @@ const AssetManager = (() => {
         return sanitized;
     }
 
-    function deleteAsset(name) {
+    async function deleteAsset(name) {
         delete assets[name];
-        saveToStorage();
+        await saveToStorage();
         renderAssetList();
     }
 
@@ -100,9 +154,9 @@ const AssetManager = (() => {
 
     function getAllAssetsRaw() { return assets; }
 
-    function loadFromObject(obj) {
+    async function loadFromObject(obj) {
         assets = obj || {};
-        saveToStorage();
+        await saveToStorage();
         renderAssetList();
     }
 

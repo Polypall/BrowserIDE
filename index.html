@@ -272,8 +272,11 @@
     <div class="status-item">🎮 Indicolite</div>
     <div class="status-item" id="status-text">Loading...</div>
     <div class="status-right">
+      <a class="status-link" href="https://phenitesw.github.io/Phenite/" target="_blank" rel="noopener" title="Phenite Software — our company">🏢 Phenite</a>
+      <a class="status-link" href="https://phenitesw.github.io/IndicoliteSignUp/" target="_blank" rel="noopener" title="Sign up for Indicolite updates">✉ Sign up for updates</a>
+      <a class="status-link" href="mailto:polySW@proton.me" title="Contact us">polySW@proton.me</a>
+      <a class="status-link" href="#" id="open-disclaimer" title="How project saving works">ℹ Saving info</a>
       <div class="status-item" id="status-mode">JavaScript · Phaser 3</div>
-      <div class="status-item">Monaco Editor</div>
     </div>
   </div>
 
@@ -558,6 +561,28 @@ const label = this.add.text(16, 16, 'Score: 0', {
     }, 500);
 });
 </script>
+
+<!-- ============================================================
+     DISCLAIMER / SAVING AGREEMENT MODAL
+     ============================================================ -->
+<div id="disclaimer-modal">
+  <div class="disclaimer-box">
+    <h2>📋 Important: How Saving Works in Indicolite</h2>
+    <p>Please read and agree before you start building. This protects your work!</p>
+    <ul>
+      <li><strong>💾 Save (to browser):</strong> Your project and uploaded assets are stored in <em>this browser, on this computer only</em>. If the browser data is cleared — which <strong>public, school, and library computers often do automatically</strong> — your work will be <strong>permanently lost</strong>.</li>
+      <li><strong>⬇ Save File (recommended):</strong> Click <strong>Save File</strong> to download your whole project as a <code>.indicolite</code> file. Keep it on a USB stick, Google Drive, or email it to yourself. This is the <strong>only</strong> way to guarantee your work is safe and can be reopened on any computer.</li>
+      <li><strong>🌐 Hosting:</strong> Indicolite does not host or back up your games for you. You are responsible for keeping your own project files and published builds.</li>
+      <li><strong>🔑 AI features:</strong> AI coding help requires your own Anthropic API key, entered in the AI panel. It is stored only in your browser and sent directly to Anthropic — never to us.</li>
+    </ul>
+    <p class="disclaimer-warn">⚠️ Indicolite and Phenite Software are not responsible for any lost projects or data. Always use <strong>Save File</strong> to keep a permanent copy.</p>
+    <label class="disclaimer-check">
+      <input type="checkbox" id="disclaimer-agree-check">
+      <span>I understand that browser-saved projects can be lost, and I will use <strong>Save File</strong> to keep my work safe.</span>
+    </label>
+    <button id="disclaimer-agree-btn" disabled>I Understand &amp; Agree</button>
+  </div>
+</div>
 
 <!-- Main app init -->
 <script src="app.js"></script>
