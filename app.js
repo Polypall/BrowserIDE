@@ -859,6 +859,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // "Read the full disclaimer" link inside the checkbox scrolls to the full text
+    const readFullDisclaimer = $('read-full-disclaimer');
+    if (readFullDisclaimer) {
+        readFullDisclaimer.addEventListener('click', (e) => {
+            e.preventDefault();
+            const box = document.querySelector('.disclaimer-box');
+            if (box) box.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+
     // Show on first visit (only if not previously agreed)
     if (!localStorage.getItem(DISCLAIMER_KEY)) {
         showDisclaimer(false);
