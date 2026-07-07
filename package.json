@@ -1,0 +1,17 @@
+{
+  "name": "indicolite",
+  "version": "1.0.0",
+  "description": "Browser-based video game creation IDE with AI coding assistance",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.0",
+    "express": "^4.21.2"
+  }
+}

@@ -4,8 +4,13 @@
 
 const AIAssistant = (() => {
     const API_URL = 'https://api.anthropic.com/v1/messages';
-    const MODEL = 'claude-sonnet-4-6';
+    const MODEL = 'claude-opus-4-8';
     const STORAGE_KEY = 'anthropic_api_key';
+
+    // When the app is served by the Node backend (server.js), AI requests
+    // are proxied through /api/ai with a server-held key and users need no
+    // key of their own. Detected on init via /api/health.
+    let backendMode = false;
 
     let messageHistory = [];
     let onInsertCode = null;
@@ -95,6 +100,19 @@ Current game code in the editor:
         if (sendBtn) sendBtn.addEventListener('click', () => sendMessage());
 
         renderQuickActions();
+        showWelcome();
+        detectBackend();
+    }
+
+    function showWelcome() {
+        let keyLine;
+        if (backendMode) {
+            keyLine = '✅ AI is ready — no API key needed. Just start building!';
+        } else if (getApiKey()) {
+            keyLine = '✅ API key detected — ready to go!';
+        } else {
+            keyLine = '⚠️ Enter your Anthropic API key above to enable AI features.';
+        }
         addMessage('assistant', `👋 **Welcome to the Game Builder AI!**
 
 I can build games for you even if you've never coded before. Just tell me what you want in plain English!
@@ -106,7 +124,64 @@ I can build games for you even if you've never coded before. Just tell me what y
 
 Or click one of the quick-action buttons below. When I give you code, hit **▶ Run Game** to see it immediately!
 
-${getApiKey() ? '✅ API key detected — ready to go!' : '⚠️ Enter your Anthropic API key above to enable AI features.'}`);
+${keyLine}`);
+    }
+
+    // Ask the server whether a shared AI key is configured. If so, hide the
+    // key field and route requests through the proxy.
+    async function detectBackend() {
+        try {
+            const r = await fetch('/api/health', { cache: 'no-store' });
+            if (!r.ok) return;
+            const data = await r.json();
+            if (data && data.aiEnabled) {
+                backendMode = true;
+                const keyRow = document.querySelector('.ai-key-row');
+                const keyHeader = document.querySelector('.ai-header');
+                if (apiKeyInput) apiKeyInput.style.display = 'none';
+                if (keyHeader) {
+                    const note = keyHeader.querySelector('div[style*="font-size:11px"]');
+                    if (note) note.textContent = 'AI powered by Indicolite — no key required';
+                    const hint = keyHeader.querySelector('div[style*="font-size:10px"]');
+                    if (hint) hint.textContent = '';
+                }
+                if (messagesEl) messagesEl.innerHTML = '';
+                showWelcome();
+            }
+        } catch (e) {
+            /* no backend — stay in per-user-key mode */
+        }
+    }
+
+    // Single call site for talking to Claude — proxy in backend mode,
+    // direct browser call (with the user's key) otherwise.
+    async function callClaude({ system, messages, max_tokens }) {
+        if (backendMode) {
+            const r = await fetch('/api/ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ system, messages, max_tokens }),
+            });
+            const data = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(data.error || `Server error (${r.status})`);
+            return data.text || '';
+        }
+
+        const key = getApiKey();
+        if (!key) throw new Error('__NO_KEY__');
+        const r = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': key,
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-calls': 'true',
+            },
+            body: JSON.stringify({ model: MODEL, max_tokens: max_tokens || 4096, system, messages }),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error?.message || `API Error (${r.status})`);
+        return data.content?.[0]?.text || '';
     }
 
     function renderQuickActions() {
@@ -198,12 +273,14 @@ ${getApiKey() ? '✅ API key detected — ready to go!' : '⚠️ Enter your Ant
         return d.innerHTML;
     }
 
+    function needsKeyWarning() {
+        if (backendMode || getApiKey()) return false;
+        addMessage('system', '⚠ Please enter your Anthropic API key in the field above first.');
+        return true;
+    }
+
     async function sendMessage(userText) {
-        const key = getApiKey();
-        if (!key) {
-            addMessage('system', '⚠ Please enter your Anthropic API key in the field above first.');
-            return;
-        }
+        if (needsKeyWarning()) return;
 
         const text = userText || (inputEl ? inputEl.value.trim() : '');
         if (!text) return;
@@ -220,37 +297,21 @@ ${getApiKey() ? '✅ API key detected — ready to go!' : '⚠️ Enter your Ant
         const thinkingEl = addMessage('assistant', '', true);
 
         try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': key,
-                    'anthropic-version': '2023-06-01',
-                    'anthropic-dangerous-direct-browser-calls': 'true',
-                },
-                body: JSON.stringify({
-                    model: MODEL,
-                    max_tokens: 4096,
-                    system: systemPrompt,
-                    messages: messageHistory.slice(-12),
-                }),
+            const reply = await callClaude({
+                system: systemPrompt,
+                messages: messageHistory.slice(-12),
+                max_tokens: 4096,
             });
-
             if (thinkingEl) thinkingEl.remove();
-
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                addMessage('system', `⚠ API Error (${response.status}): ${err.error?.message || response.statusText}`);
-                messageHistory.pop();
-            } else {
-                const data = await response.json();
-                const reply = data.content?.[0]?.text || 'No response';
-                messageHistory.push({ role: 'assistant', content: reply });
-                addMessage('assistant', reply);
-            }
+            messageHistory.push({ role: 'assistant', content: reply || 'No response' });
+            addMessage('assistant', reply || 'No response');
         } catch (e) {
             if (thinkingEl) thinkingEl.remove();
-            addMessage('system', `⚠ Network error: ${e.message}`);
+            if (e.message === '__NO_KEY__') {
+                addMessage('system', '⚠ Please enter your Anthropic API key first.');
+            } else {
+                addMessage('system', `⚠ ${e.message}`);
+            }
             messageHistory.pop();
         } finally {
             if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '➤ Send'; }
@@ -258,36 +319,22 @@ ${getApiKey() ? '✅ API key detected — ready to go!' : '⚠️ Enter your Ant
     }
 
     async function generateSprite(description) {
-        const key = getApiKey();
-        if (!key) { addMessage('system', '⚠ Please enter your Anthropic API key first.'); return null; }
+        if (needsKeyWarning()) return null;
 
         addMessage('user', `🎨 Generate sprite: ${description}`);
         const thinkingEl = addMessage('assistant', '', true);
 
         try {
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': key,
-                    'anthropic-version': '2023-06-01',
-                    'anthropic-dangerous-direct-browser-calls': 'true',
-                },
-                body: JSON.stringify({
-                    model: MODEL,
-                    max_tokens: 1500,
-                    system: `You generate pixel art by writing HTML5 Canvas drawing code. Output ONLY a javascript code block.
+            const text = await callClaude({
+                system: `You generate pixel art by writing HTML5 Canvas drawing code. Output ONLY a javascript code block.
 Variables available: ctx (CanvasRenderingContext2D), width, height (canvas size in pixels).
 Use only ctx.fillRect, ctx.fillStyle, ctx.arc, ctx.beginPath, ctx.fill. No external resources. No functions — just direct drawing statements.`,
-                    messages: [{ role: 'user', content: `Draw pixel art of: ${description}` }],
-                }),
+                messages: [{ role: 'user', content: `Draw pixel art of: ${description}` }],
+                max_tokens: 1500,
             });
 
             if (thinkingEl) thinkingEl.remove();
-            if (!response.ok) { addMessage('system', '⚠ Sprite generation failed.'); return null; }
 
-            const data = await response.json();
-            const text = data.content?.[0]?.text || '';
             const match = text.match(/```(?:javascript|js)?\n([\s\S]*?)```/);
             const code = match ? match[1].trim() : text.trim();
 
@@ -296,7 +343,7 @@ Use only ctx.fillRect, ctx.fillStyle, ctx.arc, ctx.beginPath, ctx.fill. No exter
             return code;
         } catch (e) {
             if (thinkingEl) thinkingEl.remove();
-            addMessage('system', `⚠ Error: ${e.message}`);
+            addMessage('system', e.message === '__NO_KEY__' ? '⚠ Please enter your Anthropic API key first.' : `⚠ ${e.message}`);
             return null;
         }
     }
