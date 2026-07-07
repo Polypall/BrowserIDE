@@ -838,15 +838,33 @@ document.addEventListener('DOMContentLoaded', () => {
         disclaimerModal.classList.add('show');
         if (force && disclaimerCheck && localStorage.getItem(DISCLAIMER_KEY)) {
             disclaimerCheck.checked = true;
-            if (disclaimerBtn) { disclaimerBtn.disabled = false; disclaimerBtn.textContent = 'Close'; }
+            if (disclaimerBtn) disclaimerBtn.textContent = 'Close';
         }
     }
 
     if (disclaimerCheck && disclaimerBtn) {
-        disclaimerCheck.addEventListener('change', () => {
-            disclaimerBtn.disabled = !disclaimerCheck.checked;
-        });
+        // Button is always clickable — if the box isn't checked, we flash the
+        // checkbox with a hint instead of silently doing nothing. This avoids a
+        // dead greyed-out button that makes the whole page feel frozen.
         disclaimerBtn.addEventListener('click', () => {
+            if (!disclaimerCheck.checked) {
+                const row = disclaimerCheck.closest('.disclaimer-check');
+                if (row) {
+                    row.style.transition = 'background 0.2s';
+                    row.style.background = 'rgba(255,152,0,0.35)';
+                    row.style.outline = '2px solid var(--orange)';
+                    setTimeout(() => { row.style.background = ''; row.style.outline = ''; }, 900);
+                }
+                let hint = document.getElementById('disclaimer-hint');
+                if (!hint) {
+                    hint = document.createElement('div');
+                    hint.id = 'disclaimer-hint';
+                    hint.style.cssText = 'color:#ffcc80;font-size:12px;margin-top:8px;text-align:center;';
+                    hint.textContent = '☑ Please tick the box above to continue.';
+                    disclaimerBtn.insertAdjacentElement('afterend', hint);
+                }
+                return;
+            }
             try { localStorage.setItem(DISCLAIMER_KEY, new Date().toISOString()); } catch (e) {}
             disclaimerModal.classList.remove('show');
         });
