@@ -229,13 +229,19 @@
       <!-- AI ASSISTANT TAB -->
       <div class="right-panel-content" data-panel="ai" id="ai-panel">
         <div class="ai-header">
-          <div style="font-size:11px;color:#858585;margin-bottom:4px;">Anthropic API Key</div>
-          <div class="ai-key-row">
-            <input type="password" id="ai-api-key-input" placeholder="sk-ant-..." autocomplete="off">
-            <button class="btn-small" id="ai-sprite-btn" title="Generate sprite from description">🎨 Sprite</button>
-            <button class="btn-small" id="ai-clear-btn" title="Clear chat history">🗑</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div id="ai-key-label" style="font-size:11px;color:#858585;">Anthropic API Key</div>
+            <div style="display:flex;gap:4px;">
+              <button class="btn-small" id="ai-sprite-btn" title="Generate sprite from description">🎨 Sprite</button>
+              <button class="btn-small" id="ai-clear-btn" title="Clear chat history">🗑</button>
+            </div>
           </div>
-          <div style="font-size:10px;color:#666;margin-top:4px;">Key stored locally in browser only</div>
+          <!-- Advanced toggle: only shown in backend mode -->
+          <a href="#" id="ai-own-key-toggle" style="display:none;font-size:11px;color:#569cd6;text-decoration:none;">⚙ Use my own Anthropic key (advanced)</a>
+          <div class="ai-key-row" id="ai-key-row">
+            <input type="password" id="ai-api-key-input" placeholder="sk-ant-..." autocomplete="off">
+          </div>
+          <div id="ai-key-note" style="font-size:10px;color:#666;margin-top:4px;">Key stored locally in browser only</div>
         </div>
 
         <div class="ai-messages" id="ai-messages"></div>

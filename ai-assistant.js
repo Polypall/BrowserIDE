@@ -127,36 +127,75 @@ Or click one of the quick-action buttons below. When I give you code, hit **▶ 
 ${keyLine}`);
     }
 
-    // Ask the server whether a shared AI key is configured. If so, hide the
-    // key field and route requests through the proxy.
+    // Ask the server whether a shared AI key is configured. If so, collapse the
+    // key field behind an "advanced" toggle and route requests through the
+    // proxy — while still letting a power user opt to use their own key.
     async function detectBackend() {
         try {
             const r = await fetch('/api/health', { cache: 'no-store' });
             if (!r.ok) return;
             const data = await r.json();
-            if (data && data.aiEnabled) {
-                backendMode = true;
-                const keyRow = document.querySelector('.ai-key-row');
-                const keyHeader = document.querySelector('.ai-header');
-                if (apiKeyInput) apiKeyInput.style.display = 'none';
-                if (keyHeader) {
-                    const note = keyHeader.querySelector('div[style*="font-size:11px"]');
-                    if (note) note.textContent = 'AI powered by Indicolite — no key required';
-                    const hint = keyHeader.querySelector('div[style*="font-size:10px"]');
-                    if (hint) hint.textContent = '';
-                }
-                if (messagesEl) messagesEl.innerHTML = '';
-                showWelcome();
+            if (!data || !data.aiEnabled) return;
+
+            backendMode = true;
+            const keyRow = document.getElementById('ai-key-row');
+            const toggle = document.getElementById('ai-own-key-toggle');
+            const label = document.getElementById('ai-key-label');
+            const note = document.getElementById('ai-key-note');
+
+            if (label) label.textContent = '🤖 AI powered by Indicolite';
+            // If the user previously saved their own key, keep the field open;
+            // otherwise collapse it behind the advanced toggle.
+            const hasOwnKey = !!getApiKey();
+            if (keyRow) keyRow.style.display = hasOwnKey ? '' : 'none';
+            if (note) note.textContent = hasOwnKey
+                ? 'Using your own Anthropic key. Clear it to switch back to the free built-in AI.'
+                : '';
+
+            if (toggle) {
+                toggle.style.display = 'inline-block';
+                const setOpen = (open) => {
+                    if (keyRow) keyRow.style.display = open ? '' : 'none';
+                    toggle.textContent = open
+                        ? '✕ Use the free built-in AI instead'
+                        : '⚙ Use my own Anthropic key (advanced)';
+                    if (note) note.textContent = open
+                        ? 'Optional: paste your own sk-ant- key to use your own Anthropic account. Only Anthropic keys work — leave blank to use the free built-in AI.'
+                        : '';
+                };
+                setOpen(hasOwnKey);
+                toggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    setOpen(keyRow.style.display === 'none');
+                });
             }
+
+            updateDisclaimerAI();
+            if (messagesEl) messagesEl.innerHTML = '';
+            showWelcome();
         } catch (e) {
             /* no backend — stay in per-user-key mode */
         }
     }
 
-    // Single call site for talking to Claude — proxy in backend mode,
-    // direct browser call (with the user's key) otherwise.
+    // Correct the disclaimer's AI bullet when a shared key is available.
+    function updateDisclaimerAI() {
+        const items = document.querySelectorAll('#disclaimer-modal li');
+        items.forEach(li => {
+            if (/AI coding help requires your own Anthropic API key/i.test(li.textContent)) {
+                li.innerHTML = '<strong>🔑 AI features:</strong> AI coding help is provided free — no API key needed. Power users can optionally use their own Anthropic key from the AI panel; if they do, it is stored only in their browser and sent directly to Anthropic.';
+            }
+        });
+    }
+
+    // Single call site for talking to Claude. Use the shared proxy in backend
+    // mode UNLESS the user supplied their own key (then call Anthropic directly
+    // with it). In static mode, always use the user's key.
     async function callClaude({ system, messages, max_tokens }) {
-        if (backendMode) {
+        const key = getApiKey();
+        const useProxy = backendMode && !key;
+
+        if (useProxy) {
             const r = await fetch('/api/ai', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -167,7 +206,6 @@ ${keyLine}`);
             return data.text || '';
         }
 
-        const key = getApiKey();
         if (!key) throw new Error('__NO_KEY__');
         const r = await fetch(API_URL, {
             method: 'POST',
