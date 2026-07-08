@@ -33,6 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnLoad = $('btn-load');
     const btnRun = $('btn-run');
     const btnStop = $('btn-stop');
+    const btnUndo = $('btn-undo');
+    const btnRedo = $('btn-redo');
     const btnExport = $('btn-export');
     const btnExportZip = $('btn-export-zip');
     const btnPublish = $('btn-publish');
@@ -524,6 +526,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnExport) {
         btnExport.addEventListener('click', () => showExportModal());
     }
+
+    if (btnUndo) btnUndo.addEventListener('click', () => EditorModule.undo());
+    if (btnRedo) btnRedo.addEventListener('click', () => EditorModule.redo());
 
     if (btnExportZip) {
         btnExportZip.addEventListener('click', async () => {

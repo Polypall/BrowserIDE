@@ -35,19 +35,48 @@ const GameRunner = (() => {
             assets.forEach(a => { assetMap[a.name] = a.dataUrl; });
             assetLoaderCode = `
 // === INJECTED ASSETS ===
-window.__ASSETS__ = ${JSON.stringify(assetMap)};
+// Phaser 3 rejects raw base64 data URIs ("Local data URIs are not supported"),
+// so convert each uploaded asset to a Blob URL, which the loader accepts.
+window.__ASSETS_RAW__ = ${JSON.stringify(assetMap)};
+window.__ASSETS__ = {};
+(function() {
+    function dataURItoBlobURL(dataURI) {
+        const comma = dataURI.indexOf(',');
+        const meta = dataURI.slice(0, comma);
+        const b64 = dataURI.slice(comma + 1);
+        const mime = (meta.match(/:(.*?);/) || [])[1] || 'application/octet-stream';
+        const bin = atob(b64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return URL.createObjectURL(new Blob([bytes], { type: mime }));
+    }
+    for (const k in window.__ASSETS_RAW__) {
+        try { window.__ASSETS__[k] = dataURItoBlobURL(window.__ASSETS_RAW__[k]); }
+        catch (e) { window.__ASSETS__[k] = window.__ASSETS_RAW__[k]; }
+    }
+})();
 
-// Patch Phaser's loader to use base64 assets
-// Override load.image to support asset manager assets
+// Convenience: if code calls load.image(key) / load.audio(key) with an asset
+// name but no URL, resolve it from the injected assets automatically.
 const _origLoadImage = Phaser.Loader.LoaderPlugin.prototype.image;
 Phaser.Loader.LoaderPlugin.prototype.image = function(key, url, ...args) {
-    if (window.__ASSETS__ && window.__ASSETS__[key]) {
+    if (window.__ASSETS__ && window.__ASSETS__[key] && (url === undefined || url === null)) {
         return _origLoadImage.call(this, key, window.__ASSETS__[key], ...args);
     }
     if (window.__ASSETS__ && window.__ASSETS__[url]) {
         return _origLoadImage.call(this, key, window.__ASSETS__[url], ...args);
     }
     return _origLoadImage.call(this, key, url, ...args);
+};
+const _origLoadAudio = Phaser.Loader.LoaderPlugin.prototype.audio;
+Phaser.Loader.LoaderPlugin.prototype.audio = function(key, url, ...args) {
+    if (window.__ASSETS__ && window.__ASSETS__[key] && (url === undefined || url === null)) {
+        return _origLoadAudio.call(this, key, window.__ASSETS__[key], ...args);
+    }
+    if (window.__ASSETS__ && typeof url === 'string' && window.__ASSETS__[url]) {
+        return _origLoadAudio.call(this, key, window.__ASSETS__[url], ...args);
+    }
+    return _origLoadAudio.call(this, key, url, ...args);
 };
 `;
         }

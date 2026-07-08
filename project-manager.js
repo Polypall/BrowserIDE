@@ -75,8 +75,23 @@ const ProjectManager = (() => {
         const assetMap = {};
         (assets || []).forEach(a => { assetMap[a.name] = a.dataUrl; });
 
+        // Phaser rejects raw data URIs, so exported builds convert the embedded
+        // base64 assets to Blob URLs at runtime (same as the in-app preview).
         const assetScript = Object.keys(assetMap).length > 0
-            ? `<script>window.__ASSETS__ = ${JSON.stringify(assetMap)};<\/script>`
+            ? `<script>
+window.__ASSETS_RAW__ = ${JSON.stringify(assetMap)};
+window.__ASSETS__ = {};
+(function(){
+  function toBlobURL(d){
+    var c=d.indexOf(','),m=d.slice(0,c),b=d.slice(c+1);
+    var mime=(m.match(/:(.*?);/)||[])[1]||'application/octet-stream';
+    var bin=atob(b),u=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);
+    return URL.createObjectURL(new Blob([u],{type:mime}));
+  }
+  for(var k in window.__ASSETS_RAW__){try{window.__ASSETS__[k]=toBlobURL(window.__ASSETS_RAW__[k]);}catch(e){window.__ASSETS__[k]=window.__ASSETS_RAW__[k];}}
+})();
+<\/script>`
             : '';
 
         const html = `<!DOCTYPE html>

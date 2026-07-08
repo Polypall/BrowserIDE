@@ -175,5 +175,13 @@ declare namespace Phaser {
         if (editor) editor.focus();
     }
 
-    return { init, getCode, setCode, insertAtCursor, onChange, layout, focus };
+    function undo() {
+        if (editor) { editor.focus(); editor.trigger('toolbar', 'undo', null); }
+    }
+
+    function redo() {
+        if (editor) { editor.focus(); editor.trigger('toolbar', 'redo', null); }
+    }
+
+    return { init, getCode, setCode, insertAtCursor, onChange, layout, focus, undo, redo };
 })();
