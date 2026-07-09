@@ -1105,3 +1105,94 @@ html, body {
 }
 #disclaimer-agree-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 #disclaimer-agree-btn:not(:disabled):hover { background: var(--accent-hover); }
+
+/* ============================================================
+   CLOUD / AUTH MODALS
+   ============================================================ */
+.cloud-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 10001;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.cloud-modal.show { display: flex; }
+
+.cloud-box {
+    background: var(--bg-panel);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 24px;
+    max-width: 440px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    color: var(--text);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+.cloud-box-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.cloud-box-head h2 { color: var(--accent); font-size: 18px; margin: 0; }
+.cloud-x {
+    background: none; border: none; color: var(--text-dim);
+    font-size: 18px; cursor: pointer;
+}
+.cloud-x:hover { color: #fff; }
+
+.cloud-box input[type="email"],
+.cloud-box input[type="password"] {
+    width: 100%;
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px;
+    color: var(--text);
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+.cloud-box input:focus { outline: none; border-color: var(--accent); }
+
+.cloud-primary, .cloud-secondary {
+    width: 100%;
+    border: none;
+    padding: 11px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 6px;
+}
+.cloud-primary { background: var(--accent); color: #fff; }
+.cloud-primary:hover { background: var(--accent-hover); }
+.cloud-secondary { background: var(--bg-panel3); color: var(--text); }
+.cloud-secondary:hover { background: var(--bg-panel2); }
+
+.auth-msg { font-size: 12px; min-height: 16px; margin: 4px 0; }
+.auth-msg.error { color: #ff8a80; }
+.auth-msg.ok { color: #a5d6a7; }
+
+.cloud-list { display: flex; flex-direction: column; gap: 6px; }
+.cloud-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+.cloud-list-item:hover { border-color: var(--accent); }
+.cloud-list-name { font-size: 13px; cursor: pointer; flex: 1; }
+.cloud-list-date { font-size: 11px; color: var(--text-dim); margin: 0 10px; }
+.cloud-list-del {
+    background: none; border: none; color: var(--text-dim);
+    cursor: pointer; font-size: 14px;
+}
+.cloud-list-del:hover { color: var(--red); }
+.cloud-empty { color: var(--text-dim); font-size: 13px; text-align: center; padding: 16px; }

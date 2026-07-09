@@ -898,6 +898,153 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ============================================================
+    // CLOUD (Supabase accounts + project storage)
+    // ============================================================
+    setupCloud();
+
+    function setupCloud() {
+        if (typeof CloudModule === 'undefined' || !CloudModule.init()) return;
+
+        const sep = $('cloud-sep');
+        const btnCloudSave = $('btn-cloud-save');
+        const btnCloudLoad = $('btn-cloud-load');
+        const btnAccount = $('btn-account');
+        // reveal cloud controls now that Supabase is configured
+        [sep, btnCloudSave, btnCloudLoad, btnAccount].forEach(el => { if (el) el.style.display = ''; });
+
+        const authModal = $('auth-modal');
+        const emailEl = $('auth-email');
+        const passEl = $('auth-password');
+        const msgEl = $('auth-msg');
+
+        function showAuth() { if (authModal) { authModal.classList.add('show'); msgEl.textContent = ''; msgEl.className = 'auth-msg'; emailEl.focus(); } }
+        function hideAuth() { if (authModal) authModal.classList.remove('show'); }
+        function setMsg(text, ok) { msgEl.textContent = text; msgEl.className = 'auth-msg ' + (ok ? 'ok' : 'error'); }
+
+        // Reflect login state in the toolbar
+        CloudModule.onAuthChange((user) => {
+            if (user) {
+                btnAccount.textContent = '👤 ' + (user.email || 'Account');
+                btnAccount.title = 'Logged in — click to log out';
+                btnCloudSave.disabled = false;
+                btnCloudLoad.disabled = false;
+            } else {
+                btnAccount.textContent = '👤 Log in';
+                btnAccount.title = 'Log in / sign up';
+            }
+        });
+
+        // Account button: log out if logged in, else open the login modal
+        btnAccount.addEventListener('click', async () => {
+            if (CloudModule.getUser()) {
+                if (confirm('Log out of ' + CloudModule.getUser().email + '?')) {
+                    await CloudModule.signOut();
+                    setStatus('Logged out');
+                }
+            } else {
+                showAuth();
+            }
+        });
+
+        $('auth-close').addEventListener('click', hideAuth);
+        authModal.addEventListener('click', (e) => { if (e.target === authModal) hideAuth(); });
+
+        $('auth-login-btn').addEventListener('click', async () => {
+            try {
+                setMsg('Logging in…', true);
+                await CloudModule.signIn(emailEl.value.trim(), passEl.value);
+                hideAuth();
+                setStatus('Logged in — your cloud projects are available');
+            } catch (e) { setMsg(e.message || 'Login failed', false); }
+        });
+
+        $('auth-signup-btn').addEventListener('click', async () => {
+            try {
+                setMsg('Creating account…', true);
+                const res = await CloudModule.signUp(emailEl.value.trim(), passEl.value);
+                if (res.session) {
+                    hideAuth();
+                    setStatus('Account created — you are logged in');
+                } else {
+                    setMsg('Account created! Check your email to confirm, then log in.', true);
+                }
+            } catch (e) { setMsg(e.message || 'Sign up failed', false); }
+        });
+
+        // Cloud Save
+        btnCloudSave.addEventListener('click', async () => {
+            if (!CloudModule.getUser()) { showAuth(); return; }
+            const defaultName = ProjectManager.getCurrentProjectName();
+            const name = prompt('Save to cloud as:', defaultName);
+            if (!name) return;
+            try {
+                setStatus('Saving to cloud…');
+                const data = { code: EditorModule.getCode(), assets: AssetManager.getAllAssetsRaw() };
+                await CloudModule.saveProject(name.trim(), data);
+                ProjectManager.setCurrentProjectName(name.trim());
+                const nameInput = $('project-name-input');
+                if (nameInput) nameInput.value = name.trim();
+                setStatus('☁ Saved to cloud: ' + name.trim());
+            } catch (e) {
+                console.error('Cloud save failed:', e.message);
+                setStatus('Cloud save failed: ' + e.message);
+            }
+        });
+
+        // Cloud Load
+        const loadModal = $('cloud-load-modal');
+        const listEl = $('cloud-project-list');
+        $('cloud-load-close').addEventListener('click', () => loadModal.classList.remove('show'));
+        loadModal.addEventListener('click', (e) => { if (e.target === loadModal) loadModal.classList.remove('show'); });
+
+        btnCloudLoad.addEventListener('click', async () => {
+            if (!CloudModule.getUser()) { showAuth(); return; }
+            try {
+                listEl.innerHTML = '<div class="cloud-empty">Loading…</div>';
+                loadModal.classList.add('show');
+                const projects = await CloudModule.listProjects();
+                if (!projects.length) {
+                    listEl.innerHTML = '<div class="cloud-empty">No cloud projects yet. Use ☁ Cloud Save first.</div>';
+                    return;
+                }
+                listEl.innerHTML = '';
+                projects.forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = 'cloud-list-item';
+                    const when = new Date(p.updated_at).toLocaleString();
+                    item.innerHTML = `<span class="cloud-list-name">📄 ${escapeHtmlConsole(p.name)}</span>
+                        <span class="cloud-list-date">${when}</span>
+                        <button class="cloud-list-del" title="Delete">🗑</button>`;
+                    item.querySelector('.cloud-list-name').addEventListener('click', async () => {
+                        try {
+                            setStatus('Loading from cloud…');
+                            const proj = await CloudModule.loadProject(p.id);
+                            EditorModule.setCode(proj.data.code || '');
+                            AssetManager.loadFromObject(proj.data.assets || {});
+                            ProjectManager.setCurrentProjectName(proj.name);
+                            const nameInput = $('project-name-input');
+                            if (nameInput) nameInput.value = proj.name;
+                            loadModal.classList.remove('show');
+                            setStatus('☁ Loaded: ' + proj.name);
+                        } catch (e) { setStatus('Load failed: ' + e.message); }
+                    });
+                    item.querySelector('.cloud-list-del').addEventListener('click', async (ev) => {
+                        ev.stopPropagation();
+                        if (!confirm('Delete cloud project "' + p.name + '"? This cannot be undone.')) return;
+                        try { await CloudModule.deleteProject(p.id); item.remove(); }
+                        catch (e) { alert('Delete failed: ' + e.message); }
+                    });
+                    listEl.appendChild(item);
+                });
+            } catch (e) {
+                listEl.innerHTML = '<div class="cloud-empty">Could not load projects: ' + escapeHtmlConsole(e.message) + '</div>';
+            }
+        });
+
+        console.info('☁ Cloud sync ready.');
+    }
+
+    // ============================================================
     // INIT COMPLETE
     // ============================================================
     console.info('🎮 Indicolite loaded! Press F5 or click Run to start your game.');

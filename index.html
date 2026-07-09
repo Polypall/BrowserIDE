@@ -10,6 +10,9 @@
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
 <!-- JSZip for export -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<!-- Supabase (cloud accounts + project storage) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
 
 <!-- App modules (order matters) -->
 <script src="starter-game.js"></script>
@@ -19,6 +22,7 @@
 <script src="asset-manager.js"></script>
 <script src="ai-assistant.js"></script>
 <script src="project-manager.js"></script>
+<script src="cloud.js"></script>
 </head>
 <body>
 
@@ -45,6 +49,11 @@
     <button class="toolbar-btn accent" id="btn-save-file" title="Save project to a file on your computer — use this on library computers!">⬇ Save File</button>
     <button class="toolbar-btn" id="btn-load-file" title="Open a project file from your computer">⬆ Open File</button>
     <input type="file" id="load-file-input" accept=".indicolite,.json" style="display:none">
+
+    <div class="toolbar-sep" id="cloud-sep" style="display:none"></div>
+    <button class="toolbar-btn" id="btn-cloud-save" title="Save project to your account (cloud)" style="display:none">☁ Cloud Save</button>
+    <button class="toolbar-btn" id="btn-cloud-load" title="Open a project from your account" style="display:none">☁ Cloud Load</button>
+    <button class="toolbar-btn" id="btn-account" title="Log in / sign up" style="display:none">👤 Log in</button>
 
     <div class="toolbar-sep"></div>
 
@@ -592,6 +601,37 @@ const label = this.add.text(16, 16, 'Score: 0', {
       <span>I understand that projects are saved locally in my browser and may be lost, and that I should back up my work. (<a href="#" id="read-full-disclaimer">Read the full disclaimer.</a>)</span>
     </label>
     <button id="disclaimer-agree-btn">I Understand &amp; Agree</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     LOGIN / SIGN-UP MODAL
+     ============================================================ -->
+<div id="auth-modal" class="cloud-modal">
+  <div class="cloud-box">
+    <div class="cloud-box-head">
+      <h2 id="auth-title">☁ Log in to Indicolite</h2>
+      <button class="cloud-x" id="auth-close">✕</button>
+    </div>
+    <p style="font-size:13px;color:#9cdcfe;margin-bottom:14px;">Save your games to the cloud and open them from any computer.</p>
+    <input type="email" id="auth-email" placeholder="Email" autocomplete="username">
+    <input type="password" id="auth-password" placeholder="Password (min 6 chars)" autocomplete="current-password">
+    <div id="auth-msg" class="auth-msg"></div>
+    <button class="cloud-primary" id="auth-login-btn">Log in</button>
+    <button class="cloud-secondary" id="auth-signup-btn">Create an account</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     CLOUD LOAD MODAL (list of the user's saved projects)
+     ============================================================ -->
+<div id="cloud-load-modal" class="cloud-modal">
+  <div class="cloud-box">
+    <div class="cloud-box-head">
+      <h2>☁ Your Cloud Projects</h2>
+      <button class="cloud-x" id="cloud-load-close">✕</button>
+    </div>
+    <div id="cloud-project-list" class="cloud-list"></div>
   </div>
 </div>
 
