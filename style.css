@@ -69,7 +69,12 @@ html, body {
     gap: 4px;
     flex-shrink: 0;
     z-index: 100;
+    /* Many buttons — let them scroll horizontally instead of being clipped */
+    overflow-x: auto;
+    overflow-y: hidden;
 }
+#toolbar > * { flex-shrink: 0; }
+#toolbar::-webkit-scrollbar { height: 4px; }
 
 #toolbar .toolbar-brand {
     font-weight: bold;
