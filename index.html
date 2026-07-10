@@ -610,15 +610,16 @@ const label = this.add.text(16, 16, 'Score: 0', {
 <div id="auth-modal" class="cloud-modal">
   <div class="cloud-box">
     <div class="cloud-box-head">
-      <h2 id="auth-title">☁ Log in to Indicolite</h2>
+      <h2 id="auth-title">🎮 Welcome to Indicolite</h2>
       <button class="cloud-x" id="auth-close">✕</button>
     </div>
-    <p style="font-size:13px;color:#9cdcfe;margin-bottom:14px;">Save your games to the cloud and open them from any computer.</p>
-    <input type="email" id="auth-email" placeholder="Email" autocomplete="username">
-    <input type="password" id="auth-password" placeholder="Password (min 6 chars)" autocomplete="current-password">
+    <p style="font-size:13px;color:#9cdcfe;margin-bottom:14px;">Log in or sign up to save your games to the cloud and open them from any computer.</p>
+    <input type="email" id="auth-email" name="email" placeholder="Email" autocomplete="username">
+    <input type="password" id="auth-password" name="password" placeholder="Password (min 6 chars)" autocomplete="current-password">
     <div id="auth-msg" class="auth-msg"></div>
     <button class="cloud-primary" id="auth-login-btn">Log in</button>
     <button class="cloud-secondary" id="auth-signup-btn">Create an account</button>
+    <a href="#" id="auth-skip" style="display:block;text-align:center;margin-top:16px;font-size:12px;color:#858585;text-decoration:none;">Continue without an account →</a>
   </div>
 </div>
 

@@ -916,23 +916,42 @@ document.addEventListener('DOMContentLoaded', () => {
         const emailEl = $('auth-email');
         const passEl = $('auth-password');
         const msgEl = $('auth-msg');
+        const GUEST_KEY = 'indicolite_guest';
+        let gateChecked = false;
 
         function showAuth() { if (authModal) { authModal.classList.add('show'); msgEl.textContent = ''; msgEl.className = 'auth-msg'; emailEl.focus(); } }
         function hideAuth() { if (authModal) authModal.classList.remove('show'); }
         function setMsg(text, ok) { msgEl.textContent = text; msgEl.className = 'auth-msg ' + (ok ? 'ok' : 'error'); }
 
-        // Reflect login state in the toolbar
+        // Reflect login state in the toolbar + show the front-door gate on load
         CloudModule.onAuthChange((user) => {
             if (user) {
                 btnAccount.textContent = '👤 ' + (user.email || 'Account');
                 btnAccount.title = 'Logged in — click to log out';
                 btnCloudSave.disabled = false;
                 btnCloudLoad.disabled = false;
+                hideAuth();
             } else {
                 btnAccount.textContent = '👤 Log in';
                 btnAccount.title = 'Log in / sign up';
             }
+            // On first load: if not logged in and hasn't chosen "guest", show the gate.
+            if (!gateChecked) {
+                gateChecked = true;
+                if (!user && !localStorage.getItem(GUEST_KEY)) showAuth();
+            }
         });
+
+        // "Continue without an account" — remember the choice so it doesn't nag.
+        const skipLink = $('auth-skip');
+        if (skipLink) {
+            skipLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                try { localStorage.setItem(GUEST_KEY, '1'); } catch (err) {}
+                hideAuth();
+                setStatus('Continuing without an account — use ⬇ Save File to keep your work.');
+            });
+        }
 
         // Account button: log out if logged in, else open the login modal
         btnAccount.addEventListener('click', async () => {
@@ -953,6 +972,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 setMsg('Logging in…', true);
                 await CloudModule.signIn(emailEl.value.trim(), passEl.value);
+                try { localStorage.removeItem(GUEST_KEY); } catch (err) {}
                 hideAuth();
                 setStatus('Logged in — your cloud projects are available');
             } catch (e) { setMsg(e.message || 'Login failed', false); }
@@ -963,6 +983,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 setMsg('Creating account…', true);
                 const res = await CloudModule.signUp(emailEl.value.trim(), passEl.value);
                 if (res.session) {
+                    try { localStorage.removeItem(GUEST_KEY); } catch (err) {}
                     hideAuth();
                     setStatus('Account created — you are logged in');
                 } else {
