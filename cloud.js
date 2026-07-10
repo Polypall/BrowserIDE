@@ -11,14 +11,19 @@ const CloudModule = (() => {
     let authCb = null;
 
     function init() {
-        if (!window.supabase || !window.SUPABASE_URL || !window.SUPABASE_KEY) {
-            console.info('Cloud sync disabled (Supabase not configured).');
+        const libOk = window.supabase && typeof window.supabase.createClient === 'function';
+        if (!libOk) {
+            console.warn('☁ Cloud disabled: Supabase library did not load (window.supabase missing). Check the CDN <script> tag.');
+            return false;
+        }
+        if (!window.SUPABASE_URL || !window.SUPABASE_KEY) {
+            console.warn('☁ Cloud disabled: SUPABASE_URL / SUPABASE_KEY not set in supabase-config.js.');
             return false;
         }
         try {
             client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY);
         } catch (e) {
-            console.warn('Could not start Supabase client:', e.message);
+            console.warn('☁ Could not start Supabase client:', e.message);
             return false;
         }
 
