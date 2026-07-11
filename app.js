@@ -953,6 +953,43 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
+        // "Forgot password?" — email a reset link.
+        const forgotLink = $('auth-forgot');
+        if (forgotLink) {
+            forgotLink.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const email = (emailEl.value || '').trim() || (prompt('Enter your account email to reset your password:') || '').trim();
+                if (!email) return;
+                try {
+                    setMsg('Sending reset email…', true);
+                    await CloudModule.resetPassword(email);
+                    setMsg('If that email has an account, a reset link is on its way. Check your inbox (and spam).', true);
+                } catch (err) { setMsg(err.message || 'Could not send reset email', false); }
+            });
+        }
+
+        // Set-new-password modal (shown when the user returns via a reset link)
+        const resetModal = $('reset-modal');
+        const resetPassEl = $('reset-password');
+        const resetMsgEl = $('reset-msg');
+        CloudModule.onRecovery(() => {
+            hideAuth();
+            if (resetModal) resetModal.classList.add('show');
+        });
+        const resetSaveBtn = $('reset-save-btn');
+        if (resetSaveBtn) {
+            resetSaveBtn.addEventListener('click', async () => {
+                const pw = resetPassEl.value;
+                if (!pw || pw.length < 6) { resetMsgEl.textContent = 'Password must be at least 6 characters.'; resetMsgEl.className = 'auth-msg error'; return; }
+                try {
+                    resetMsgEl.textContent = 'Updating…'; resetMsgEl.className = 'auth-msg ok';
+                    await CloudModule.updatePassword(pw);
+                    resetModal.classList.remove('show');
+                    setStatus('Password updated — you are logged in.');
+                } catch (err) { resetMsgEl.textContent = err.message || 'Update failed'; resetMsgEl.className = 'auth-msg error'; }
+            });
+        }
+
         // Account button: log out if logged in, else open the login modal
         btnAccount.addEventListener('click', async () => {
             if (CloudModule.getUser()) {

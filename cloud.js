@@ -9,6 +9,7 @@ const CloudModule = (() => {
     let user = null;
     let currentId = null;   // id of the cloud project currently open (for overwrite-on-save)
     let authCb = null;
+    let recoveryCb = null;
 
     function init() {
         const libOk = window.supabase && typeof window.supabase.createClient === 'function';
@@ -27,7 +28,10 @@ const CloudModule = (() => {
             return false;
         }
 
-        client.auth.onAuthStateChange((_evt, session) => {
+        client.auth.onAuthStateChange((evt, session) => {
+            // Arriving via a password-reset email link fires this event with a
+            // temporary session — let the app show a "set new password" form.
+            if (evt === 'PASSWORD_RECOVERY' && recoveryCb) recoveryCb();
             user = (session && session.user) || null;
             if (authCb) authCb(user);
         });
@@ -43,6 +47,21 @@ const CloudModule = (() => {
     const getCurrentId = () => currentId;
     const setCurrentId = (id) => { currentId = id; };
     function onAuthChange(cb) { authCb = cb; }
+    function onRecovery(cb) { recoveryCb = cb; }
+
+    // Send a password-reset email. The link brings the user back to the site,
+    // where onAuthStateChange fires PASSWORD_RECOVERY so they can set a new one.
+    async function resetPassword(email) {
+        const { error } = await client.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin,
+        });
+        if (error) throw error;
+    }
+
+    async function updatePassword(newPassword) {
+        const { error } = await client.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+    }
 
     async function signUp(email, password) {
         const { data, error } = await client.auth.signUp({ email, password });
@@ -97,7 +116,8 @@ const CloudModule = (() => {
     }
 
     return {
-        init, isEnabled, getUser, getCurrentId, setCurrentId, onAuthChange,
-        signUp, signIn, signOut, saveProject, listProjects, loadProject, deleteProject,
+        init, isEnabled, getUser, getCurrentId, setCurrentId, onAuthChange, onRecovery,
+        signUp, signIn, signOut, resetPassword, updatePassword,
+        saveProject, listProjects, loadProject, deleteProject,
     };
 })();
