@@ -1099,6 +1099,50 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // ============================================================
+        // AUTO-SAVE to cloud (logged-in users) — so nothing is lost even
+        // if a library computer wipes local data or shuts off.
+        // ============================================================
+        let autosaveTimer = null;
+        let isAutosaving = false;
+        let lastSnapshot = '';
+
+        function scheduleAutosave() {
+            if (!CloudModule.getUser()) return; // cloud auto-save is for logged-in users
+            clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(doAutosave, 4000); // ~4s after the last change
+        }
+
+        async function doAutosave() {
+            if (isAutosaving || !CloudModule.getUser()) return;
+            const code = EditorModule.getCode();
+            // Don't create an "Untitled" from the untouched starter template.
+            if (!CloudModule.getCurrentId() && code === DEFAULT_GAME_CODE) return;
+
+            const assets = AssetManager.getAllAssetsRaw();
+            const snapshot = code + '::' + Object.keys(assets).length;
+            if (snapshot === lastSnapshot && CloudModule.getCurrentId()) return; // nothing changed
+
+            isAutosaving = true;
+            try {
+                setStatus('☁ Saving…');
+                const name = (ProjectManager.getCurrentProjectName() || '').trim() || 'Untitled';
+                await CloudModule.saveProject(name, { code, assets });
+                lastSnapshot = snapshot;
+                setStatus('☁ Auto-saved ' + new Date().toLocaleTimeString());
+            } catch (e) {
+                setStatus('☁ Auto-save failed: ' + e.message);
+            } finally {
+                isAutosaving = false;
+            }
+        }
+
+        EditorModule.onChange(() => scheduleAutosave());
+        // Periodic backup (catches asset uploads, which don't fire editor changes)
+        setInterval(() => { if (CloudModule.getUser()) scheduleAutosave(); }, 30000);
+        // Best-effort save when leaving the page
+        window.addEventListener('beforeunload', () => { if (CloudModule.getUser()) doAutosave(); });
+
         console.info('☁ Cloud sync ready.');
     }
 
